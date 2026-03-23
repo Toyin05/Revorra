@@ -1,0 +1,552 @@
+// Prisma Schema for Revorra Backend - Production Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER MODEL ====================
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  username      String    @unique
+  phone         String?
+  avatar        String?
+  referralCode  String    @unique @map("referral_code")
+  referredBy    String?   @map("referred_by")
+  role          UserRole  @default(USER)
+  isVerified    Boolean   @default(false) @map("is_verified")
+  isSuspended   Boolean   @default(false) @map("is_suspended")
+  
+  // Fraud protection fields
+  signupIP           String?   @map("signup_ip")
+  lastLoginIP        String?   @map("last_login_ip")
+  deviceFingerprint String?   @map("device_fingerprint")
+  referralSignupIP  String?   @map("referral_signup_ip")
+  isSuspicious       Boolean   @default(false) @map("is_suspicious")
+  fraudReason        String?   @map("fraud_reason")
+  
+  // Welcome bonus
+  welcomeBonusClaimed Boolean   @default(false) @map("welcome_bonus_claimed")
+  canWithdrawTask      Boolean   @default(false) @map("can_withdraw_task")
+  canWithdrawReferral Boolean   @default(false) @map("can_withdraw_referral")
+  canWithdrawOnehub   Boolean   @default(false) @map("can_withdraw_onehub")
+  
+  // Timestamps
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  wallet        Wallet?
+  referrals     Referral[]         @relation("ReferrerRelation")
+  referredByUser Referral?          @relation("ReferredRelation")
+  taskCompletions TaskCompletion[]
+  sponsoredShares SponsoredShare[]
+  gamePlays     GamePlay[]
+  withdrawals   WithdrawalRequest[]
+  transactions  Transaction[]
+  devices       Device[]
+  vtuTransactions VTUTransaction[]
+  couponRequests CouponRequest[]
+  coupons      Coupon[]
+
+  activities    UserActivity[]
+
+  // Indexes
+  @@index([email])
+  @@index([referralCode])
+  @@index([referredBy])
+  @@index([createdAt])
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// ==================== WALLET MODEL ====================
+model Wallet {
+  id                  String  @id @default(uuid())
+  userId              String  @unique @map("user_id")
+  
+  // Available balances
+  referralBalance    Float   @default(0) @map("referral_balance")
+  taskBalance        Float   @default(0) @map("task_balance")
+  onehubBalance     Float   @default(0) @map("onehub_balance")
+  bonusBalance       Float   @default(0) @map("bonus_balance")
+  
+  // Locked balances (for pending withdrawals)
+  lockedReferralBalance Float @default(0) @map("locked_referral_balance")
+  lockedTaskBalance    Float @default(0) @map("locked_task_balance")
+  lockedOnehubBalance  Float @default(0) @map("locked_onehub_balance")
+  
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("wallets")
+}
+
+// ==================== REFERRAL MODEL ====================
+model Referral {
+  id              String        @id @default(uuid())
+  referrerId      String        @map("referrer_id")
+  referredUserId  String        @unique @map("referred_user_id")
+  reward          Float         @default(0)
+  status          ReferralStatus @default(PENDING)
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  referrer        User          @relation("ReferrerRelation", fields: [referrerId], references: [id])
+  referredUser    User          @relation("ReferredRelation", fields: [referredUserId], references: [id])
+
+  @@index([referrerId])
+  @@index([referredUserId])
+  @@map("referrals")
+}
+
+enum ReferralStatus {
+  PENDING
+  CONFIRMED
+  REWARDED
+}
+
+// ==================== TASK MODEL ====================
+model Task {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  link        String?
+  reward      Float
+  taskType    TaskType  @default(NORMAL_TASK) @map("task_type")
+  shareLink   String?   @map("share_link")
+  shareMessage String? @map("share_message")
+  dailyLimit  Int?      @default(1) @map("daily_limit")
+  expiresAt   DateTime? @map("expires_at")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  completions TaskCompletion[]
+
+  @@index([taskType])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("tasks")
+}
+
+enum TaskType {
+  NORMAL_TASK
+  SPONSORED_POST
+  EXTERNAL_LINK
+  SOCIAL_TASK
+}
+
+// ==================== TASK COMPLETION MODEL ====================
+model TaskCompletion {
+  id          String            @id @default(uuid())
+  userId      String            @map("user_id")
+  taskId      String            @map("task_id")
+  proof       String?
+  status      CompletionStatus @default(PENDING)
+  completedAt DateTime          @default(now()) @map("completed_at")
+  verifiedAt  DateTime?         @map("verified_at")
+
+  // Relations
+  user        User              @relation(fields: [userId], references: [id])
+  task        Task              @relation(fields: [taskId], references: [id])
+
+  @@unique([userId, taskId])
+  @@index([userId])
+  @@index([taskId])
+  @@map("task_completions")
+}
+
+enum CompletionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ==================== SPONSORED POST MODEL ====================
+model SponsoredPost {
+  id           String   @id @default(uuid())
+  title        String
+  content      String
+  shareMessage String   @map("share_message")
+  reward       Float
+  maxShares    Int      @default(0) @map("max_shares")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  shares SponsoredShare[]
+
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("sponsored_posts")
+}
+
+// ==================== SPONSORED SHARE MODEL ====================
+model SponsoredShare {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  postId      String          @map("post_id")
+  shareLink   String?         @map("share_link")
+  status      ShareStatus     @default(PENDING)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  user        User            @relation(fields: [userId], references: [id])
+  post        SponsoredPost   @relation(fields: [postId], references: [id])
+
+  @@index([userId])
+  @@index([postId])
+  @@map("sponsored_shares")
+}
+
+enum ShareStatus {
+  PENDING
+  CONFIRMED
+  REWARDED
+}
+
+// ==================== GAME PLAY MODEL ====================
+model GamePlay {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  gameType  GameType  @map("game_type")
+  reward    Float     @default(0)
+  playedAt  DateTime  @default(now()) @map("played_at")
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([gameType])
+  @@index([playedAt])
+  @@map("game_plays")
+}
+
+enum GameType {
+  TICTACTOE
+  SPIN
+}
+
+// ==================== WITHDRAWAL REQUEST MODEL ====================
+model WithdrawalRequest {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+  walletType  WalletType          @map("wallet_type")
+  amount      Float
+  status      WithdrawalStatus    @default(PENDING)
+  method      String?             // BANK, CRYPTO
+  accountNumber String?           @map("account_number")
+  accountName   String?           @map("account_name")
+  bankName     String?           @map("bank_name")
+  couponId     String?           @map("coupon_id")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  user        User                @relation(fields: [userId], references: [id])
+  coupon      Coupon?             @relation(fields: [couponId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([walletType])
+  @@index([createdAt])
+  @@map("withdrawal_requests")
+}
+
+// ==================== COUPON MODEL (Admin Generated) ====================
+model Coupon {
+  id          String      @id @default(uuid())
+  code        String      @unique
+  userId      String      @map("user_id")
+  type        CouponType
+  isUsed      Boolean     @default(false) @map("is_used")
+  usedBy      String?     @map("used_by")
+  usedAt      DateTime?   @map("used_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id])
+  withdrawals WithdrawalRequest[]
+
+  @@index([code])
+  @@index([userId])
+  @@index([type])
+  @@index([isUsed])
+  @@map("coupons")
+}
+
+enum CouponType {
+  TASK
+  REFERRAL
+  ONEHUB
+}
+
+enum WalletType {
+  REFERRAL
+  TASK
+  ONEHUB
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+// ==================== COUPON REQUEST MODEL (User Requests) ====================
+model CouponRequest {
+  id            String           @id @default(uuid())
+  userId        String           @map("user_id")
+  type          WalletType
+  amount        Float
+  status        RequestStatus    @default(PENDING) @map("status")
+  proofImage    String?          @map("proof_image")
+  couponCode    String?          @map("coupon_code")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  user          User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@map("coupon_requests")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REDEEMED
+}
+
+// ==================== COUPON MODEL (Admin Generated) ====================
+// (See below for Coupon model)
+
+// ==================== TRANSACTION MODEL ====================
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  walletType  WalletType?     @map("wallet_type")
+  type        TransactionType
+  amount      Float
+  reference   String?
+  description String?
+  status      TransactionStatus @default(PENDING)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  user        User            @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([walletType])
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  WELCOME_BONUS
+  REFERRAL_REWARD
+  INDIRECT_REFERRAL
+  TASK_REWARD
+  SPONSORED_POST_REWARD
+  SPONSORED_SHARE_REWARD
+  GAME_REWARD
+  WITHDRAWAL_REQUEST
+  WITHDRAWAL_PAID
+  VTU_PURCHASE
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// ==================== DEVICE MODEL ====================
+model Device {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  deviceFingerprint String  @map("device_fingerprint")
+  ipAddress         String?  @map("ip_address")
+  userAgent         String?  @map("user_agent")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([deviceFingerprint])
+  @@map("devices")
+}
+
+// ==================== NOTIFICATION MODEL ====================
+model Notification {
+  id          String    @id @default(uuid())
+  title       String
+  message     String
+  image       String?
+  actionLink  String?   @map("action_link")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ==================== ADMIN LOG MODEL ====================
+model AdminLog {
+  id        String   @id @default(uuid())
+  adminId   String   @map("admin_id")
+  action    String
+  target    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("admin_logs")
+}
+
+// ==================== ADMIN MODEL ====================
+model Admin {
+  id          String      @id @default(uuid())
+  email       String      @unique
+  password    String
+  name        String
+  role        AdminRole   @default(ADMIN)
+  isActive    Boolean     @default(true) @map("is_active")
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+}
+
+// ==================== PLATFORM SETTINGS MODEL ====================
+model PlatformSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+// ==================== VTU TRANSACTION MODEL ====================
+model VTUTransaction {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  phone       String
+  network     String
+  amount      Float
+  type        VTUType
+  status      VTUStatus   @default(PENDING)
+  
+  // Provider response
+  providerRef String?     @map("provider_ref")
+  providerResponse String? @map("provider_response")
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("vtu_transactions")
+}
+
+enum VTUType {
+  AIRTIME
+  DATA
+}
+
+enum VTUStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ==================== AUDIT LOG MODEL ====================
+model AuditLog {
+  id          String   @id @default(uuid())
+  adminId     String?  @map("admin_id")
+  action      String
+  target      String
+  targetId    String?  @map("target_id")
+  details     Json?
+  ipAddress   String?  @map("ip_address")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}
+
+// ==================== USER ACTIVITY MODEL ====================
+model UserActivity {
+  id               String        @id @default(uuid())
+  userId           String        @map("user_id")
+  action           ActivityType
+  ipAddress        String?       @map("ip_address")
+  deviceFingerprint String?      @map("device_fingerprint")
+  metadata         Json?
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  user             User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([ipAddress])
+  @@map("user_activities")
+}
+
+enum ActivityType {
+  LOGIN
+  TASK_COMPLETION
+  WITHDRAWAL_REQUEST
+  SIGNUP
+}
+
+// ==================== ANNOUNCEMENT MODEL ====================
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  image     String?
+  ctaLink   String?  @map("cta_link")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([active])
+  @@index([createdAt])
+  @@map("announcements")
+}
