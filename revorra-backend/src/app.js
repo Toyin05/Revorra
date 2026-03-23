@@ -26,12 +26,13 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// CORS configuration
 app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
-    'http://localhost:8080'
+    'http://localhost:8080',
+    'https://revorra.vercel.app',
+    'https://revorra-admin.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
