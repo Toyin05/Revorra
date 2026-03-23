@@ -40,7 +40,7 @@ export default function DashboardPage() {
         ]);
         // Only set wallet from API if we don't have it from context
         if (!walletFromContext) {
-          const walletRes = await fetch('http://localhost:5000/api/wallet').then(r => r.json());
+          const walletRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/wallet`).then(r => r.json());
           if (walletRes.data) {
             setWallet(walletRes.data);
           }
