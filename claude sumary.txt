@@ -1,0 +1,126 @@
+**Here's your comprehensive context summary for a new chat:**
+
+---
+
+# Revorra Platform — Full Development Context
+
+## What Was Built
+A mobile-first earning platform called **Revorra** with three parts:
+- `C:\Users\pc\Documents\Projects\Revorra\revorra-backend` — Node.js + Express + Prisma backend
+- `C:\Users\pc\Documents\Projects\Revorra\users` — React user-facing frontend (runs on localhost:8080)
+- `C:\Users\pc\Documents\Projects\Revorra\manager` — React admin dashboard (runs on localhost:5173)
+
+## Tech Stack
+- **Backend:** Node.js, Express, Prisma ORM, PostgreSQL
+- **Frontend:** React, TypeScript, Vite, Tailwind, Axios
+- **Database:** PostgreSQL (local: localhost:5432/revorra, production: Railway)
+- **Hosting:** Backend on Railway (`https://revorra-production.up.railway.app`), frontends on Vercel
+
+## Database
+- Local PostgreSQL password: `12345678`
+- Railway DATABASE_URL: `postgresql://postgres:sUTwVZIEAEKemhleqTuPeMjGCfmWExcX@centerbeam.proxy.rlwy.net:25519/railway`
+- 20+ tables including: users, wallets, tasks, task_completions, referrals, transactions, withdrawal_requests, coupons, coupon_requests, vtu_transactions, game_plays, announcements, user_activities, devices, sponsored_posts, notifications, platform_settings
+
+## Key Environment Variables (revorra-backend/.env)
+```
+PORT=5000
+DATABASE_URL="postgresql://postgres:12345678@localhost:5432/revorra?schema=public"
+JWT_SECRET=super_secure_secret_key_change_in_production
+JWT_EXPIRES_IN=7d
+ADMIN_EMAIL=admin@revorra.com
+ADMIN_PASSWORD=hashed_password_here
+TOPUPWIZARD_TOKEN=TW_lae1uinjmovc6an5yje8m0hbhfp5b0
+TOPUPWIZARD_BASE_URL=https://topupwizard.com/api
+EUR_TO_NGN_RATE=1600
+FRONTEND_URL=http://localhost:8080
+ADMIN_URL=http://localhost:5173
+Platform Features Built
+
+Auth System — Register, login, JWT tokens, admin register at /api/auth/admin/register
+Referral System — Username = referral code, 2-level rewards (10% direct, 5% indirect)
+Task Engine — Admin creates tasks, users complete with proof, admin approves, rewards credited
+Sponsored Posts — WhatsApp share tasks with shareLink and shareMessage
+Wallet System — 3 wallets per user: referralBalance, taskBalance, onehubBalance + locked versions
+Coupon System — Users request coupon → pay ₦1500 to Opay (9011649326) → upload proof → admin approves → coupon generated → user redeems → withdrawal unlocked
+Withdrawal System — Bank transfer, minimum amounts (TASK: €89, REFERRAL: €35, ONEHUB: €16)
+Fraud Protection — Daily earning limit €5, task cooldown, IP tracking, device fingerprinting
+Admin Analytics — Stats, revenue, task analytics, withdrawal analytics, user analytics, top referrers
+Games — Spin the Wheel (rewards €0-0.5, 40% chance of €0), TicTacToe, 2 plays per day each
+Announcements — Admin creates popups with image/CTA, users see on dashboard load
+VTU System — Real airtime/data purchase via TopupWizard API, deducts from OneHub wallet
+Admin Settings — Update TopupWizard token, EUR/NGN rate from admin dashboard
+
+Earning Amounts
+
+Welcome bonus: €1.50 (OneHub wallet)
+Referral: €0.50 (Referral wallet)
+Indirect referral: €0.20 (Referral wallet)
+Task: varies per task (Task wallet)
+Sponsored post: varies (Task wallet)
+Games: €0-0.5 random (OneHub wallet)
+
+Withdrawal Minimums
+
+Task wallet: €89
+Referral wallet: €35
+OneHub wallet: €16
+
+Coupon Request Payment Details
+
+Bank: Opay
+Account Number: 9011649326
+Account Name: Revorra Services
+TASK coupon cost: ₦1500
+REFERRAL coupon cost: ₦2000
+ONEHUB coupon cost: ₦1500
+
+API Endpoints (all prefixed with /api)
+Auth: POST /auth/register, POST /auth/login, GET /auth/me, POST /auth/admin/register
+Tasks: GET /tasks, GET /tasks/:id, POST /tasks/:id/complete, GET /tasks/history
+Wallet: GET /wallet, GET /wallet/transactions
+Withdrawals: POST /withdrawals, GET /withdrawals/history
+Coupons: POST /coupons/request, POST /coupons/upload-proof, POST /coupons/redeem, GET /coupons/my-requests, GET /coupons/user-coupons
+Games: POST /games/spin, POST /games/tictactoe, GET /games/history
+VTU: GET /vtu/tw-balance, GET /vtu/data-plans/:network, POST /vtu/airtime, POST /vtu/data, GET /vtu/history
+Referrals: GET /referrals, GET /referrals/my-referrals
+Announcements: GET /announcements/active
+Admin: GET /admin/stats, GET /admin/revenue, GET /admin/users, DELETE /admin/users/:id, GET /admin/tasks, POST /admin/tasks, GET /admin/task-completions, POST /admin/task-completions/:id/approve, POST /admin/task-completions/:id/reject, GET /admin/withdrawals, POST /admin/withdrawals/:id/approve, POST /admin/withdrawals/:id/reject, POST /admin/withdrawals/:id/paid, GET /admin/coupons, POST /admin/coupons, GET /admin/coupons/requests, PATCH /admin/coupons/:id/approve, PATCH /admin/coupons/:id/reject, GET /admin/coupon-requests, POST /admin/coupon-requests/:id/approve, POST /admin/coupon-requests/:id/reject, GET /admin/announcements, POST /admin/announcements, PATCH /admin/announcements/:id, DELETE /admin/announcements/:id, GET /admin/fraud/suspicious-users, GET /admin/settings, POST /admin/settings, GET /admin/vtu/transactions
+Current Status
+
+Backend deployed on Railway ✅
+Database schema pushed to Railway ✅
+Currently fixing: Registration returning 400 on production (likely validation issue or existing email)
+Frontend not yet deployed to Vercel (still local)
+TopupWizard wallet funded and working (real airtime confirmed delivered)
+
+Local Development Commands
+powershell# Backend
+cd C:\Users\pc\Documents\Projects\Revorra\revorra-backend
+npx kill-port 5000
+npm run dev
+
+# Users frontend
+cd C:\Users\pc\Documents\Projects\Revorra\users
+npm run dev
+
+# Admin dashboard
+cd C:\Users\pc\Documents\Projects\Revorra\manager
+npm run dev
+
+# Prisma Studio
+npx prisma studio
+Known Issues / In Progress
+
+Registration 400 error on production Railway deployment
+Frontend apps not yet deployed to Vercel
+Webhook URL not set on TopupWizard (needs deployed backend URL)
+
+AI Tools Used
+
+Kilo AI (VS Code extension) for code implementation
+Claude for architecture, debugging, prompts, and guidance
+
+
+Paste this entire summary in a new chat and the AI will have full context to continue from exactly where you left off.
+
+DATABASE_URL:postgresql://postgres:12345678@localhost:5432/revorra?schema=public

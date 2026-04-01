@@ -1,0 +1,21 @@
+PS C:\Users\pc\Documents\CSC483-Algorithms-Assignment> git add .
+PS C:\Users\pc\Documents\CSC483-Algorithms-Assignment> git commit -m "Question 1: Product search implementation with JUnit tests"
+[main d27d8c0] Question 1: Product search implementation with JUnit tests
+ 6 files changed, 476 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 src/main/java/com/csc483/search/Product.java
+ create mode 100644 src/main/java/com/csc483/search/ProductSearch.java
+ create mode 100644 src/main/java/com/csc483/search/SearchBenchmark.java
+ create mode 100644 src/test/java/com/csc483/search/ProductSearchTest.java
+PS C:\Users\pc\Documents\CSC483-Algorithms-Assignment> git push
+Enumerating objects: 31, done.
+Counting objects: 100% (31/31), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (10/10), done.
+Writing objects: 100% (24/24), 5.34 KiB | 237.00 KiB/s, done.
+Total 24 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/Toyin05/CSC483-Algorithms-Assignment--U2023-5570208-DIRECT-ENTRY-.git
+   34c7575..d27d8c0  main -> main
+PS C:\Users\pc\Documents\CSC483-Algorithms-Assignment>
+
+everything has been pushed....what next from here
