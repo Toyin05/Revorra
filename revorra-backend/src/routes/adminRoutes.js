@@ -116,13 +116,26 @@ router.post('/withdrawals/:id/paid', authenticateToken, requireAdmin, async (req
 // POST /api/admin/coupons - Generate coupons
 router.post('/coupons', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { walletType, count = 1 } = req.body;
+    const { walletType, count = 1, email } = req.body;
 
-    if (!walletType || !['REFERRAL', 'TASK', 'ONEHUB'].includes(walletType)) {
+    // Use 'type' for Prisma model, but accept walletType from request
+    const couponType = walletType || 'TASK';
+    if (!['REFERRAL', 'TASK', 'ONEHUB'].includes(couponType)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid wallet type. Must be REFERRAL, TASK, or ONEHUB.',
       });
+    }
+
+    // If email is provided, find the user
+    let userId = null;
+    if (email) {
+      const user = await prisma.user.findUnique({
+        where: { email: email.trim() }
+      });
+      if (user) {
+        userId = user.id;
+      }
     }
 
     const coupons = [];
@@ -131,7 +144,9 @@ router.post('/coupons', authenticateToken, requireAdmin, async (req, res) => {
       const coupon = await prisma.coupon.create({
         data: {
           code,
-          walletType,
+          type: couponType,  // Use 'type' for Prisma model
+          userId: userId,
+          generatedFor: email ? email.trim() : null,
         },
       });
       coupons.push(coupon);
@@ -326,7 +341,7 @@ router.get('/coupons', authenticateToken, requireAdmin, async (req, res) => {
     const { walletType, isUsed } = req.query;
 
     const where = {};
-    if (walletType) where.walletType = walletType;
+    if (walletType) where.type = walletType;  // Use 'type' instead of 'walletType'
     if (isUsed !== undefined) where.isUsed = isUsed === 'true';
 
     const coupons = await prisma.coupon.findMany({
@@ -334,9 +349,15 @@ router.get('/coupons', authenticateToken, requireAdmin, async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Map to include generatedFor as generated_for for frontend
+    const formattedCoupons = coupons.map(c => ({
+      ...c,
+      generated_for: c.generatedFor
+    }));
+
     return res.status(200).json({
       success: true,
-      data: coupons,
+      data: formattedCoupons,
     });
   } catch (error) {
     console.error('Get coupons error:', error);
@@ -355,17 +376,40 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
         id: true,
         email: true,
         username: true,
+        phone: true,
         role: true,
         isVerified: true,
         isSuspended: true,
         createdAt: true,
+        wallet: {
+          select: {
+            referralBalance: true,
+            taskBalance: true,
+            onehubBalance: true
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    // Format response to flatten wallet fields
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      phone: user.phone,
+      role: user.role,
+      isVerified: user.isVerified,
+      isSuspended: user.isSuspended,
+      createdAt: user.createdAt,
+      referral_balance: user.wallet?.referralBalance || 0,
+      task_balance: user.wallet?.taskBalance || 0,
+      onehub_balance: user.wallet?.onehubBalance || 0
+    }));
+
     return res.status(200).json({
       success: true,
-      data: users,
+      data: formattedUsers,
     });
   } catch (error) {
     console.error('Get users error:', error);
@@ -373,6 +417,65 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
       success: false,
       message: error.message || 'Failed to get users.',
     });
+  }
+});
+
+// GET /api/admin/users/:id - Get user details
+router.get('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        wallet: true,
+        referrals: true,
+        taskCompletions: { where: { status: 'APPROVED' } },
+        transactions: { orderBy: { createdAt: 'desc' }, take: 10 }
+      }
+    });
+
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isSuspended: user.isSuspended,
+        createdAt: user.createdAt,
+        wallet: user.wallet,
+        totalReferrals: user.referrals.length,
+        totalTasksCompleted: user.taskCompletions.length,
+        recentTransactions: user.transactions
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PATCH /api/admin/users/:id/suspend - Toggle user suspension
+router.patch('/users/:id/suspend', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isSuspended: !user.isSuspended }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: updated.isSuspended ? 'User suspended' : 'User unsuspended',
+      data: { isSuspended: updated.isSuspended }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -525,8 +628,8 @@ router.get('/task-completions', authenticateToken, requireAdmin, async (req, res
   try {
     const { status } = req.query;
 
-    const where = {};
-    if (status) where.status = status.toUpperCase();
+    // Default to PENDING if no status specified
+    const where = status ? { status: status.toUpperCase() } : { status: 'PENDING' };
 
     const completions = await prisma.taskCompletion.findMany({
       where,
@@ -560,12 +663,15 @@ router.get('/task-completions', authenticateToken, requireAdmin, async (req, res
 router.post('/task-completions/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Approving task completion:', id);
 
     // Get the completion
     const completion = await prisma.taskCompletion.findUnique({
       where: { id },
       include: { task: true },
     });
+
+    console.log('Completion found:', completion?.status);
 
     if (!completion) {
       return res.status(404).json({
@@ -575,51 +681,62 @@ router.post('/task-completions/:id/approve', authenticateToken, requireAdmin, as
     }
 
     if (completion.status !== 'PENDING') {
-      return res.status(400).json({
-        success: false,
-        message: 'Task completion is not pending.',
+      console.log('Task completion is not PENDING, current status:', completion.status);
+      // Even if already processed, delete it to remove from admin list
+      await prisma.taskCompletion.delete({ where: { id } });
+      return res.status(200).json({
+        success: true,
+        message: `Task was already ${completion.status.toLowerCase()}, now removed from list.`,
       });
     }
 
-    // Update completion status
-    const updated = await prisma.taskCompletion.update({
-      where: { id },
-      data: {
-        status: 'APPROVED',
-        verifiedAt: new Date(),
-      },
-    });
+    // Try to credit wallet - don't fail if daily limit exceeded
+    try {
+      const { creditWallet, creditWalletWithType } = await import('../services/walletService.js');
 
-    // Credit user wallet - use appropriate transaction type based on task type
-    const { creditWallet, creditWalletWithType } = await import('../services/walletService.js');
-    
-    if (completion.task.taskType === 'SPONSORED_POST') {
-      // Use SPONSORED_POST_REWARD for sponsored posts
-      await creditWalletWithType(
-        completion.userId,
-        'TASK',
-        completion.task.reward,
-        `Sponsored post reward: ${completion.task.title}`,
-        'SPONSORED_POST_REWARD',
-        true
-      );
-    } else {
-      // Use regular TASK_REWARD for other tasks
-      await creditWallet(
-        completion.userId,
-        'TASK',
-        completion.task.reward,
-        `Task reward: ${completion.task.title}`,
-        true
-      );
+      if (completion.task.taskType === 'SPONSORED_POST') {
+        await creditWalletWithType(
+          completion.userId,
+          'TASK',
+          completion.task.reward,
+          `Sponsored post reward: ${completion.task.title}`,
+          'SPONSORED_POST_REWARD',
+          false // Don't check daily limit for admin-approved tasks
+        );
+      } else {
+        await creditWallet(
+          completion.userId,
+          'TASK',
+          completion.task.reward,
+          `Task reward: ${completion.task.title}`,
+          false // Don't check daily limit for admin-approved tasks
+        );
+      }
+
+      // Distribute referral rewards to referrers
+      await distributeReferralRewards(completion.userId, completion.task.reward);
+    } catch (walletError) {
+      // Log but don't fail - task is still approved
+      console.log('Wallet credit skipped:', walletError.message);
     }
 
-    // Distribute referral rewards to referrers
-    await distributeReferralRewards(completion.userId, completion.task.reward);
+    // Delete the task completion permanently after approval
+    await prisma.taskCompletion.delete({ where: { id } });
+
+    // Create notification for user
+    await prisma.userNotification.create({
+      data: {
+        userId: completion.userId,
+        type: 'TASK_APPROVED',
+        title: 'Task Approved! 🎉',
+        message: `Your submission for "${completion.task.title}" has been approved. €${completion.task.reward} has been added to your wallet.`,
+        data: { taskId: completion.taskId, reward: completion.task.reward }
+      }
+    });
 
     return res.status(200).json({
       success: true,
-      data: updated,
+      message: 'Task approved and removed from list.',
     });
   } catch (error) {
     console.error('Approve task completion error:', error);
@@ -634,10 +751,13 @@ router.post('/task-completions/:id/approve', authenticateToken, requireAdmin, as
 router.post('/task-completions/:id/reject', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Rejecting task completion:', id);
 
     const completion = await prisma.taskCompletion.findUnique({
       where: { id },
     });
+
+    console.log('Completion found:', completion?.status);
 
     if (!completion) {
       return res.status(404).json({
@@ -646,24 +766,32 @@ router.post('/task-completions/:id/reject', authenticateToken, requireAdmin, asy
       });
     }
 
+    // If already processed, just delete it
     if (completion.status !== 'PENDING') {
-      return res.status(400).json({
-        success: false,
-        message: 'Task completion is not pending.',
+      await prisma.taskCompletion.delete({ where: { id } });
+      return res.status(200).json({
+        success: true,
+        message: `Task was already ${completion.status.toLowerCase()}, now removed from list.`,
       });
     }
 
-    const updated = await prisma.taskCompletion.update({
-      where: { id },
+    // Delete the task completion permanently (no wallet changes needed for rejection)
+    await prisma.taskCompletion.delete({ where: { id } });
+
+    // Create notification for user
+    await prisma.userNotification.create({
       data: {
-        status: 'REJECTED',
-        verifiedAt: new Date(),
-      },
+        userId: completion.userId,
+        type: 'TASK_REJECTED',
+        title: 'Task Rejected',
+        message: `Your submission for "${completion.task?.title || 'a task'}" was not approved. Please try again with a valid proof.`,
+        data: { taskId: completion.taskId }
+      }
     });
 
     return res.status(200).json({
       success: true,
-      data: updated,
+      message: 'Task rejected and removed from list.',
     });
   } catch (error) {
     console.error('Reject task completion error:', error);
@@ -1087,6 +1215,228 @@ router.post('/settings/rate', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
-// ==================== PLATFORM SETTINGS END ====================
+// ==================== COUPON LINK SETTINGS ====================
+
+// GET /api/admin/coupon-link - Get coupon request redirect link
+router.get('/coupon-link', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const setting = await prisma.platformSetting.findUnique({
+      where: { key: 'COUPON_REQUEST_LINK' }
+    });
+    return res.status(200).json({
+      success: true,
+      data: { link: setting?.value || 'https://wa.me/your-number' }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/admin/coupon-link - Update coupon request redirect link
+router.post('/coupon-link', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    let linkValue = req.body.link || req.body.value || '';
+
+    // Normalize the link — add https:// if missing
+    if (linkValue && !linkValue.startsWith('http://') && !linkValue.startsWith('https://')) {
+      linkValue = 'https://' + linkValue;
+    }
+
+    await prisma.platformSetting.upsert({
+      where: { key: 'COUPON_REQUEST_LINK' },
+      update: { value: linkValue },
+      create: { key: 'COUPON_REQUEST_LINK', value: linkValue, description: 'WhatsApp/Telegram link for coupon requests' }
+    });
+
+    return res.status(200).json({ success: true, message: 'Coupon link updated successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== NOTIFICATION ROUTES ====================
+
+// GET /api/notifications - Get user's notifications
+router.get('/notifications', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { unreadOnly } = req.query;
+    
+    const where = { userId };
+    if (unreadOnly === 'true') {
+      where.isRead = false;
+    }
+
+    const notifications = await prisma.userNotification.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+
+    // Get unread count
+    const unreadCount = await prisma.userNotification.count({
+      where: { userId, isRead: false }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        notifications,
+        unreadCount
+      }
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get notifications.',
+    });
+  }
+});
+
+// PATCH /api/notifications/:id/read - Mark notification as read
+router.patch('/notifications/:id/read', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const notification = await prisma.userNotification.findFirst({
+      where: { id, userId }
+    });
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found.'
+      });
+    }
+
+    await prisma.userNotification.update({
+      where: { id },
+      data: { isRead: true }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Notification marked as read.'
+    });
+  } catch (error) {
+    console.error('Mark read error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to mark notification as read.',
+    });
+  }
+});
+
+// PATCH /api/notifications/read-all - Mark all as read
+router.patch('/notifications/read-all', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await prisma.userNotification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'All notifications marked as read.'
+    });
+  } catch (error) {
+    console.error('Mark all read error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to mark all notifications as read.',
+    });
+  }
+});
+
+// DELETE /api/notifications/:id - Delete notification
+router.delete('/notifications/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await prisma.userNotification.deleteMany({
+      where: { id, userId }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Notification deleted.'
+    });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete notification.',
+    });
+  }
+});
+
+// ==================== ADMIN NOTIFICATION ROUTES ====================
+
+// GET /api/admin/notifications - Get admin notifications (pending tasks, withdrawals, etc.)
+router.get('/admin/notifications', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    // Get counts for pending items
+    const [pendingTasks, pendingWithdrawals, pendingCoupons] = await Promise.all([
+      prisma.taskCompletion.count({ where: { status: 'PENDING' } }),
+      prisma.withdrawalRequest.count({ where: { status: 'PENDING' } }),
+      prisma.couponRequest.count({ where: { status: 'PENDING' } })
+    ]);
+
+    // Get recent notifications
+    const notifications = await prisma.userNotification.findMany({
+      where: { userId: null }, // Admin notifications have null userId
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        pendingTasks,
+        pendingWithdrawals,
+        pendingCoupons,
+        totalPending: pendingTasks + pendingWithdrawals + pendingCoupons,
+        notifications
+      }
+    });
+  } catch (error) {
+    console.error('Get admin notifications error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get notifications.',
+    });
+  }
+});
+
+// Helper function to create notifications
+const createNotification = async (userId, type, title, message, data = null) => {
+  return await prisma.userNotification.create({
+    data: {
+      userId,
+      type,
+      title,
+      message,
+      data
+    }
+  });
+};
+
+// Helper function to create admin notification
+const createAdminNotification = async (type, title, message, data = null) => {
+  return await prisma.userNotification.create({
+    data: {
+      userId: null, // Admin notification
+      type,
+      title,
+      message,
+      data
+    }
+  });
+};
 
 export default router; 

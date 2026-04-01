@@ -149,6 +149,17 @@ export const completeTask = async (userId, taskId, proof) => {
     },
   });
 
+  // Create admin notification for new task submission
+  await prisma.userNotification.create({
+    data: {
+      userId: null, // Admin notification
+      type: 'TASK_SUBMISSION',
+      title: 'New Task Submission',
+      message: `User submitted proof for task: ${task.title}`,
+      data: { completionId: completion.id, taskId, userId }
+    }
+  });
+
   return completion;
 };
 

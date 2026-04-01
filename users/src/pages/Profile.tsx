@@ -1,14 +1,36 @@
 import { useAuth } from "@/context/AuthContext";
-import { LogOut, ChevronRight, User, Wallet, Settings, Clock, Share2 } from "lucide-react";
+import { LogOut, ChevronRight, User, Wallet, Settings, Clock, Share2, DollarSign } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { getWallet } from "@/api/walletApi";
+import { useEffect, useState } from "react";
 import BackButton from "@/components/BackButton";
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, wallet: walletFromContext } = useAuth();
   const navigate = useNavigate();
+  const [wallet, setWallet] = useState<{ referralBalance: number; taskBalance: number; onehubBalance: number; bonusBalance: number } | null>(null);
+  
+  useEffect(() => {
+    const loadWallet = async () => {
+      // Use wallet from context if available
+      if (walletFromContext) {
+        setWallet(walletFromContext as any);
+      } else {
+        try {
+          const res = await getWallet();
+          setWallet(res.data.data);
+        } catch (err) {
+          console.error("Failed to load wallet:", err);
+        }
+      }
+    };
+    loadWallet();
+  }, [walletFromContext]);
+  
   if (!user) return null;
 
-  const total = (user.referral_balance || 0) + (user.task_balance || 0) + (user.onehub_balance || 0);
+  const balances = wallet || { referralBalance: 0, taskBalance: 0, onehubBalance: 0, bonusBalance: 0 };
+  const total = (balances.referralBalance ?? 0) + (balances.taskBalance ?? 0) + (balances.onehubBalance ?? 0) + (balances.bonusBalance ?? 0);
   const displayName = user?.username || user?.email || 'User';
   const initials = displayName.charAt(0).toUpperCase();
 

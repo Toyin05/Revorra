@@ -16,7 +16,6 @@ import AdminSponsoredPage from "./pages/AdminSponsoredPage";
 import AdminGamesPage from "./pages/AdminGamesPage";
 import AdminWithdrawalsPage from "./pages/AdminWithdrawalsPage";
 import AdminCouponsPage from "./pages/AdminCouponsPage";
-import AdminVTUPage from "./pages/AdminVTUPage";
 import AdminNotificationsPage from "./pages/AdminNotificationsPage";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminSettingsPage from "./pages/AdminSettings";
@@ -46,7 +45,6 @@ const App = () => (
               <Route path="/admin/games" element={<AdminGamesPage />} />
               <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
               <Route path="/admin/coupons" element={<AdminCouponsPage />} />
-              <Route path="/admin/vtu" element={<AdminVTUPage />} />
               <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
               <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
               <Route path="/admin/settings" element={<AdminSettingsPage />} />

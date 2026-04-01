@@ -1,6 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { BalanceCard } from "@/components/BalanceCard";
-import { getTransactions } from "@/api/walletApi";
+import { getWallet, getTransactions } from "@/api/walletApi";
 import { getTasks } from "@/api/tasksApi";
 import { Users, ListTodo, Gamepad2, DollarSign, ArrowRight, Bell, Gift, Copy, Check } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -15,7 +15,8 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [copied, setCopied] = useState(false);
 
-  const referralLink = `https://revorra.com/register?ref=${user?.username || ''}`;
+  const baseUrl = window.location.origin;
+  const referralLink = `${baseUrl}/register?ref=${user?.username || ''}`;
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(referralLink);
@@ -38,13 +39,12 @@ export default function DashboardPage() {
           getTasks(),
           getTransactions()
         ]);
-        // Only set wallet from API if we don't have it from context
-        if (!walletFromContext) {
-          const walletRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/wallet`).then(r => r.json());
-          if (walletRes.data) {
-            setWallet(walletRes.data);
+        try {
+          const walletRes = await getWallet();
+          if (walletRes.data.data) {
+            setWallet(walletRes.data.data);
           }
-        }
+        } catch {}
         setTasks(tasksRes.data.data);
         setTransactions(transactionsRes.data.data);
       } catch (err) {

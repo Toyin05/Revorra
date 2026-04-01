@@ -1,10 +1,11 @@
-import { Home, ListTodo, Gamepad2, Users, User } from "lucide-react";
+import { Home, ListTodo, Gamepad2, Users, User, Phone } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/dashboard", icon: Home, label: "Home" },
   { to: "/tasks", icon: ListTodo, label: "Tasks" },
+  { to: "/vtu", icon: Phone, label: "VTU" },
   { to: "/onehub", icon: Gamepad2, label: "OneHub" },
   { to: "/referrals", icon: Users, label: "Referrals" },
   { to: "/profile", icon: User, label: "Profile" },

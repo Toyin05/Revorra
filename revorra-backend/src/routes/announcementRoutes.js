@@ -36,4 +36,19 @@ router.get('/active', async (req, res) => {
   }
 });
 
+// GET /api/settings/coupon-link - Get coupon request redirect link (public)
+router.get('/coupon-link', async (req, res) => {
+  try {
+    const setting = await prisma.platformSetting.findUnique({
+      where: { key: 'COUPON_REQUEST_LINK' }
+    });
+    return res.status(200).json({
+      success: true,
+      data: { link: setting?.value || 'https://wa.me/your-number' }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;

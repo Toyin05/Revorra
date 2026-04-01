@@ -24,10 +24,11 @@ export default function ReferralsPage() {
   
   if (!user) return null;
 
-  const link = `revorra.com/register?ref=${user.username}`;
+  const baseUrl = window.location.origin;
+  const link = `${baseUrl}/register?ref=${user.username}`;
 
   const copy = () => {
-    navigator.clipboard.writeText(`https://${link}`);
+    navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success("Link copied!");
     setTimeout(() => setCopied(false), 2000);

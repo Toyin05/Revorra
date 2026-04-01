@@ -5,3 +5,9 @@ export const getUsers = () =>
 
 export const getUserDetails = (id) =>
   adminApi.get(`/admin/users/${id}`)
+
+export const suspendUser = (id) =>
+  adminApi.patch(`/admin/users/${id}/suspend`)
+
+export const deleteUser = (id) =>
+  adminApi.delete(`/admin/users/${id}`)

@@ -56,6 +56,7 @@ model User {
   coupons      Coupon[]
 
   activities    UserActivity[]
+  notifications UserNotification[]
 
   // Indexes
   @@index([email])
@@ -271,7 +272,8 @@ model WithdrawalRequest {
 model Coupon {
   id          String      @id @default(uuid())
   code        String      @unique
-  userId      String      @map("user_id")
+  userId      String?     @map("user_id")  // Optional - can be assigned later
+  generatedFor String?    @map("generated_for")  // Track email used when generating
   type        CouponType
   isUsed      Boolean     @default(false) @map("is_used")
   usedBy      String?     @map("used_by")
@@ -279,7 +281,7 @@ model Coupon {
   createdAt   DateTime    @default(now()) @map("created_at")
 
   // Relations
-  user        User        @relation(fields: [userId], references: [id])
+  user        User?       @relation(fields: [userId], references: [id])
   withdrawals WithdrawalRequest[]
 
   @@index([code])
@@ -549,4 +551,36 @@ model Announcement {
   @@index([active])
   @@index([createdAt])
   @@map("announcements")
+}
+
+// ==================== USER NOTIFICATION MODEL ====================
+model UserNotification {
+  id        String             @id @default(uuid())
+  userId    String?            @map("user_id")  // null for admin notifications
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?              // Additional data like taskId, withdrawalId etc
+  isRead    Boolean            @default(false) @map("is_read")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  // Relations
+  user      User?              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("user_notifications")
+}
+
+enum NotificationType {
+  TASK_SUBMISSION
+  TASK_APPROVED
+  TASK_REJECTED
+  WITHDRAWAL_REQUEST
+  WITHDRAWAL_APPROVED
+  WITHDRAWAL_REJECTED
+  NEW_REFERRAL
+  COUPON_GENERATED
+  SYSTEM_ANNOUNCEMENT
 }

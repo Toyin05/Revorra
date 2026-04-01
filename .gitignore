@@ -1,19 +1,28 @@
 # Dependencies
 node_modules/
-package-lock.json
-yarn.lock
+*/node_modules/
 
-# Environment variables
+# Environment files
 .env
 .env.local
 .env.production
+*/.env
+*/.env.local
 
 # Build outputs
 dist/
 build/
-.next/
-out/
+*/dist/
+*/build/
+
+# Logs
+*.log
+npm-debug.log*
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Prisma
+*.db
+*.db-journal

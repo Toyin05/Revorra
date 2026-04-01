@@ -33,6 +33,8 @@ declare module "@/api/withdrawalAdminApi" {
 declare module "@/api/couponAdminApi" {
   export const generateCoupon: (data: any) => Promise<any>;
   export const getCoupons: () => Promise<any>;
+  export const getCouponLink: () => Promise<any>;
+  export const updateCouponLink: (link: string) => Promise<any>;
 }
 
 declare module "@/api/usersAdminApi" {

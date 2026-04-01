@@ -93,20 +93,36 @@ export default function AdminTasksPage() {
   const handleApprove = async (completionId: string) => {
     try {
       await approveCompletion(completionId);
-      toast({ title: "Completion approved" });
-      loadData();
-    } catch (error) {
-      toast({ title: "Failed to approve", variant: "destructive" });
+      // Remove the approved completion from the list
+      setCompletions(completions.filter(c => c.id !== completionId));
+      toast({ title: "Task approved and removed from list" });
+    } catch (error: any) {
+      // If already approved or any error, still remove from list to avoid duplicates
+      const errorMessage = error?.response?.data?.message || error?.message || '';
+      if (errorMessage.includes('already') || error?.response?.status === 200) {
+        setCompletions(completions.filter(c => c.id !== completionId));
+        toast({ title: "Task removed from list" });
+      } else {
+        toast({ title: "Failed to approve", variant: "destructive" });
+      }
     }
   };
 
   const handleReject = async (completionId: string) => {
     try {
       await rejectCompletion(completionId);
-      toast({ title: "Completion rejected" });
-      loadData();
-    } catch (error) {
-      toast({ title: "Failed to reject", variant: "destructive" });
+      // Remove the rejected completion from the list
+      setCompletions(completions.filter(c => c.id !== completionId));
+      toast({ title: "Task rejected and removed from list" });
+    } catch (error: any) {
+      // If already processed, still remove from list
+      const errorMessage = error?.response?.data?.message || error?.message || '';
+      if (errorMessage.includes('already') || error?.response?.status === 200) {
+        setCompletions(completions.filter(c => c.id !== completionId));
+        toast({ title: "Task removed from list" });
+      } else {
+        toast({ title: "Failed to reject", variant: "destructive" });
+      }
     }
   };
 
@@ -189,30 +205,21 @@ export default function AdminTasksPage() {
                             <img 
                               src={completion.proof} 
                               alt="User Proof" 
-                              style={{
-                                maxWidth: "300px",
-                                borderRadius: "8px",
-                                border: "1px solid #ddd"
-                              }} 
+                              className="w-[120px] h-[80px] object-cover rounded-md cursor-pointer"
+                              onClick={() => window.open(completion.proof, '_blank')}
                             />
-                            <a 
-                              href={completion.proof} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block mt-2 text-primary hover:underline text-xs"
-                            >
-                              Open Full Image
-                            </a>
                           </div>
-                        ) : (
+                        ) : completion.proof.startsWith("http") ? (
                           <a 
                             href={completion.proof} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-primary hover:underline font-mono"
+                            className="text-primary hover:underline"
                           >
-                            {completion.proof}
+                            View Proof Link
                           </a>
+                        ) : (
+                          <span>{completion.proof}</span>
                         )}
                       </div>
                     )}
@@ -262,3 +269,4 @@ export default function AdminTasksPage() {
     </div>
   );
 }
+

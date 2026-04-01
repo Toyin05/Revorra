@@ -50,11 +50,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
         // Save token
         localStorage.setItem("token", token);
-        console.log('Token saved:', localStorage.getItem('token'));
         
         // Save user
         localStorage.setItem("admin", JSON.stringify(user));
-        console.log('User saved:', localStorage.getItem('admin'));
         setAdmin(user);
 
         return { success: true };

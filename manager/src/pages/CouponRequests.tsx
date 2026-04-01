@@ -22,7 +22,6 @@ export default function CouponRequests() {
   const loadRequests = async () => {
     try {
       const res = await getCouponRequests();
-      console.log('Coupon requests response:', res.data);
       setRequests(res.data.data || []);
     } catch (error) {
       console.error("Failed to load requests:", error);

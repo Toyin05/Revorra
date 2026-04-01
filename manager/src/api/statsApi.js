@@ -3,6 +3,9 @@ import adminApi from "./adminAxios"
 export const getAdminStats = () =>
   adminApi.get("/admin/stats")
 
+export const getAdminNotifications = () =>
+  adminApi.get("/admin/notifications")
+
 export const getRevenueStats = () =>
   adminApi.get("/admin/revenue")
 

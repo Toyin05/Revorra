@@ -57,6 +57,17 @@ export const requestWithdrawal = async (userId, walletType, amount, withdrawalDe
     return result;
   });
 
+  // Create admin notification for new withdrawal request
+  await prisma.userNotification.create({
+    data: {
+      userId: null, // Admin notification
+      type: 'WITHDRAWAL_REQUEST',
+      title: 'New Withdrawal Request',
+      message: `User requested €${amount} ${walletType} withdrawal`,
+      data: { withdrawalId: withdrawal.id, userId, amount, walletType }
+    }
+  });
+
   return withdrawal;
 };
 

@@ -29,7 +29,7 @@ const isValidUsername = (username) => {
  */
 export const register = async (req, res) => {
   try {
-    const { email, password, username, referralCode, deviceFingerprint } = req.body;
+    const { email, password, username, phone, referralCode, deviceFingerprint } = req.body;
 
     // 1. Validate input
     if (!email || !password || !username) {
@@ -132,6 +132,7 @@ export const register = async (req, res) => {
       email,
       password,
       username,
+      phone,
       referralCode,
       deviceFingerprint: deviceFp,
       ipAddress,

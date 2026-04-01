@@ -17,7 +17,7 @@ export const TOP_EARNERS = [
   { name: "David M.", earnings: 2540, avatar: "DM" },
 ];
 
-export const SPIN_REWARDS = [0.2, 0.5, 0.8, 1, 1.5, 2, 3, 4, 5, 6, 7, 10, 15, 20];
+export const SPIN_REWARDS = [0, 0.20, 0, 0.30, 0, 0.40, 0, 0.50];
 
 export const COUNTRIES = ["Nigeria", "Ghana", "Kenya", "Cameroon"];
 

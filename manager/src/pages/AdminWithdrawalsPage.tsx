@@ -73,10 +73,6 @@ export default function AdminWithdrawalsPage() {
     return `€${typeof amount === 'number' ? amount.toFixed(2) : "0.00"}`;
   };
 
-  const getUserEmail = (w: any) => {
-    return w.user?.email || w.user_email || "-";
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -119,7 +115,33 @@ export default function AdminWithdrawalsPage() {
               {withdrawals.map((w: any) => (
                 <TableRow key={w.id}>
                   <TableCell className="font-medium">
-                    {getUserEmail(w)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px' }}>{w.user?.email || w.userEmail || '-'}</span>
+                      <button
+                        onClick={() => {
+                          const email = w.user?.email || w.userEmail;
+                          if (email) {
+                            navigator.clipboard.writeText(email);
+                            toast({ title: 'Email copied!' });
+                          }
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          color: '#9ca3af',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        title="Copy email"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      </button>
+                    </div>
                   </TableCell>
                   <TableCell className="capitalize">{w.walletType || w.wallet_type || w.wallet || "-"}</TableCell>
                   <TableCell className="text-right font-medium">{formatAmount(w.amount)}</TableCell>

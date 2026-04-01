@@ -33,6 +33,12 @@ export default function TasksPage() {
   const [proofLink, setProofLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  
+  // State for regular task proof input
+  const [confirmingTask, setConfirmingTask] = useState<string | null>(null);
+  const [proofText, setProofText] = useState<{[key: string]: string}>({});
+  const [regularProofImage, setRegularProofImage] = useState<{[key: string]: string}>({});
+  const [regularSubmitting, setRegularSubmitting] = useState(false);
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -71,7 +77,7 @@ export default function TasksPage() {
 
   const handleShare = (task: Task) => {
     const shareText = task.shareMessage || "Check out this post!";
-    const shareUrl = task.shareLink || task.link;
+    const shareUrl = task.shareLink || (task.link?.startsWith('http') ? task.link : `https://${task.link}`);
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}`;
     window.open(whatsappUrl, "_blank");
   };
@@ -174,6 +180,8 @@ export default function TasksPage() {
 
   const renderRegularTask = (task: Task, i: number) => {
     const done = isCompleted(task.id);
+    const isConfirming = confirmingTask === task.id;
+    
     return (
       <motion.div
         key={task.id}
@@ -192,30 +200,135 @@ export default function TasksPage() {
             <p className="text-xs font-semibold text-primary mt-1">Reward: €{(task.reward ?? 0).toFixed(2)}</p>
           </div>
         </div>
-        {!done && (
+        
+        {/* Normal state - buttons */}
+        {!done && !isConfirming && (
           <div className="flex gap-2 mt-3">
-            <a href={task.link} target="_blank" rel="noopener noreferrer" className="flex-1 border rounded-xl py-2 text-center text-xs font-medium cursor-pointer hover:bg-muted transition">
+            <a 
+              href={task.link?.startsWith('http') ? task.link : `https://${task.link}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex-1 border rounded-xl py-2 text-center text-xs font-medium cursor-pointer hover:bg-muted transition"
+            >
               Visit Link
             </a>
-            <button onClick={() => handleComplete(task.id, task.reward)} className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition">
+            <button 
+              onClick={() => setConfirmingTask(task.id)} 
+              className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition"
+            >
               Confirm Done
             </button>
           </div>
         )}
+        
+        {/* Expand proof input when confirming */}
+        {isConfirming && (
+          <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
+            <p className="text-xs text-muted-foreground font-medium">
+              Provide proof of completion:
+            </p>
+
+            {/* Option 1: Text/Link proof */}
+            <input
+              type="text"
+              placeholder="Paste a link as proof (e.g. post URL, screenshot link)"
+              value={proofText[task.id] || ""}
+              onChange={(e) => setProofText(prev => ({ ...prev, [task.id]: e.target.value }))}
+              className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+            />
+
+            {/* Divider */}
+            <div className="text-center text-xs text-muted-foreground">
+              — or upload a screenshot —
+            </div>
+
+            {/* Option 2: Image upload */}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              id={`regular-proof-${task.id}`}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setRegularProofImage(prev => ({ ...prev, [task.id]: ev.target?.result as string }));
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+            <label
+              htmlFor={`regular-proof-${task.id}`}
+              className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer hover:bg-muted/50 transition"
+            >
+              {regularProofImage[task.id] ? (
+                <img 
+                  src={regularProofImage[task.id]} 
+                  alt="Proof preview" 
+                  className="h-full w-full object-contain rounded-lg p-1"
+                />
+              ) : (
+                <>
+                  <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                  <span className="text-xs text-muted-foreground">Click to upload screenshot</span>
+                </>
+              )}
+            </label>
+
+            <div className="flex gap-2">
+              <button 
+                onClick={() => { 
+                  setConfirmingTask(null); 
+                  setProofText(prev => ({ ...prev, [task.id]: "" })); 
+                  setRegularProofImage(prev => ({ ...prev, [task.id]: "" })); 
+                }} 
+                className="flex-1 border rounded-xl py-2 text-xs font-medium cursor-pointer hover:bg-muted transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleComplete(task.id)} 
+                disabled={regularSubmitting}
+                className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50"
+              >
+                {regularSubmitting ? "Submitting..." : "Submit Proof"}
+              </button>
+            </div>
+          </div>
+        )}
+        
         {done && <p className="text-xs text-green-600 font-medium mt-2">✓ Completed</p>}
       </motion.div>
     );
   };
 
-  const handleComplete = async (taskId: string, reward: number) => {
+  const handleComplete = async (taskId: string) => {
     if (isCompleted(taskId)) return;
+    
+    const textProof = proofText[taskId]?.trim() || '';
+    const imageProof = regularProofImage[taskId] || '';
+    const proof = imageProof || textProof;
+
+    if (!proof) {
+      toast.error("Please provide a proof link or upload a screenshot.");
+      return;
+    }
+
+    setRegularSubmitting(true);
     try {
-      await completeTask(taskId, "");
+      await completeTask(taskId, proof);
       setCompletedTasks(new Map(completedTasks.set(taskId, "pending")));
+      setConfirmingTask(null);
+      setProofText(prev => ({ ...prev, [taskId]: "" }));
+      setRegularProofImage(prev => ({ ...prev, [taskId]: "" }));
       toast.success("Task submitted for review!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to complete task:", err);
-      toast.error("Failed to submit task. Please try again.");
+      toast.error(err.response?.data?.message || "Failed to submit task. Please try again.");
+    } finally {
+      setRegularSubmitting(false);
     }
   };
 

@@ -29,13 +29,15 @@ async function getTodayPlayCount(userId, gameType) {
   return count;
 }
 
-// Weighted reward pool for Spin the Wheel (€0 - €0.5)
+// Weighted reward pool for Spin the Wheel - Better odds!
 const SPIN_REWARDS = [
-  { value: 0, weight: 40 },
-  { value: 0.2, weight: 25 },
-  { value: 0.3, weight: 15 },
-  { value: 0.4, weight: 10 },
-  { value: 0.5, weight: 10 }
+  { value: 0, weight: 25 },    // 25% - reduced from 40%
+  { value: 0.20, weight: 35 },  // 35% - increased
+  { value: 0.25, weight: 20 },  // 20% - increased
+  { value: 0.30, weight: 10 },   // 10%
+  { value: 0.35, weight: 5 },   // 5%
+  { value: 0.40, weight: 3 },   // 3% - rare
+  { value: 0.50, weight: 2 }   // 2% - very rare
 ];
 
 // Function to get weighted random reward
@@ -64,6 +66,63 @@ router.get('/', (req, res) => {
     success: false,
     message: 'Get games endpoint not yet implemented',
   });
+});
+
+// GET /api/games/spin/status - Get spin game status
+router.get('/spin/status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const playCount = await prisma.gamePlay.count({
+      where: {
+        userId,
+        gameType: 'SPIN',
+        playedAt: { gte: today }
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        playsUsed: playCount,
+        playsRemaining: Math.max(0, 2 - playCount),
+        canPlay: playCount < 2
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/games/tictactoe/status - Get tic-tac-toe game status
+router.get('/tictactoe/status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+
+    const playCount = await prisma.gamePlay.count({
+      where: {
+        userId,
+        gameType: 'TICTACTOE',
+        playedAt: { gte: today }
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        playsUsed: playCount,
+        playsRemaining: Math.max(0, 2 - playCount),
+        canPlay: playCount < 2
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // POST /api/games/spin - Spin the wheel (protected, limited to 2 per day)
@@ -99,7 +158,7 @@ router.post('/spin', authenticateToken, async (req, res) => {
     // Generate session ID for duplicate prevention
     const sessionId = generateSessionId();
 
-    // Get spin reward
+    // Get spin reward from backend (NOT frontend)
     const reward = getSpinReward();
 
     // Credit reward securely using the service
@@ -128,7 +187,8 @@ router.post('/spin', authenticateToken, async (req, res) => {
       data: {
         reward: reward,
         remainingPlays: Math.max(0, remainingPlays),
-        oneHubBalance: updatedWallet?.onehubBalance || 0
+        oneHubBalance: updatedWallet?.onehubBalance || 0,
+        message: reward > 0 ? `You won €${reward}!` : 'Better luck next time!'
       }
     });
   } catch (error) {
@@ -144,6 +204,7 @@ router.post('/spin', authenticateToken, async (req, res) => {
 router.post('/tictactoe', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
+    const { board } = req.body; // Board state passed from frontend
     const gameType = 'TICTACTOE';
     const dailyLimit = DAILY_LIMITS[gameType];
 
@@ -161,12 +222,61 @@ router.post('/tictactoe', authenticateToken, async (req, res) => {
     // Generate session ID for duplicate prevention
     const sessionId = generateSessionId();
 
-    // Record game play (no reward for tic-tac-toe currently)
+    // Determine game result based on board state
+    let result = 'draw';
+    let reward = 0;
+
+    // Simple win detection - check if X (player) won
+    const checkWinner = (boardState) => {
+      const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for (const [a,b,c] of lines) {
+        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+          return boardState[a];
+        }
+      }
+      return null;
+    };
+
+    if (board && Array.isArray(board)) {
+      const winner = checkWinner(board);
+      if (winner === 'X') {
+        result = 'win';
+        // Weighted reward: €0.20 (45%), €0.25 (25%), €0.30 (15%), €0.40 (10%), €0.50 (5%)
+        const TICTACTOE_REWARDS = [
+          { value: 0.20, weight: 45 },
+          { value: 0.25, weight: 25 },
+          { value: 0.30, weight: 15 },
+          { value: 0.40, weight: 10 },
+          { value: 0.50, weight: 5 }
+        ];
+        const totalWeight = TICTACTOE_REWARDS.reduce((sum, r) => sum + r.weight, 0);
+        const random = Math.random() * totalWeight;
+        let cumulative = 0;
+        for (const r of TICTACTOE_REWARDS) {
+          cumulative += r.weight;
+          if (random <= cumulative) {
+            reward = r.value;
+            break;
+          }
+        }
+      } else if (winner === 'O') {
+        result = 'loss';
+      } else if (board.every(cell => cell !== null)) {
+        result = 'draw';
+      }
+    }
+
+    // Credit reward if player won
+    if (reward > 0) {
+      await creditGameReward(userId, reward, gameType, sessionId);
+    }
+
+    // Record game play
     await prisma.gamePlay.create({
       data: {
         userId,
         gameType,
-        reward: 0
+        reward: reward
       }
     });
 
@@ -180,7 +290,8 @@ router.post('/tictactoe', authenticateToken, async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        message: 'Tic-tac-toe game recorded',
+        result: result,
+        reward: reward,
         remainingPlays: Math.max(0, remainingPlays),
         oneHubBalance: wallet?.onehubBalance || 0
       }

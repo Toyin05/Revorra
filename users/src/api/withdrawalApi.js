@@ -4,7 +4,7 @@ export const requestWithdrawal = (data) =>
   api.post("/withdrawals", data)
 
 export const getWithdrawals = () =>
-  api.get("/withdrawals")
+  api.get("/withdrawals/history")
 
 export const submitWithdrawal = (data) =>
   api.post("/withdrawals", data)

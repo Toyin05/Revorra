@@ -164,7 +164,7 @@ export default function VTUPage() {
   }, []);
 
   const getNetworkColor = (netId: string) => {
-    const net = NETWORKS.find(n => n.id === netId);
+    const net = networks.find(n => n.id === netId);
     return net?.color || "#6B7280";
   };
 

@@ -8,7 +8,7 @@ import { generateToken } from '../utils/jwt.js';
  * @returns {Object} Created user and token
  */
 export const registerUser = async (userData) => {
-  const { email, password, username, referralCode, deviceFingerprint, ipAddress, userAgent } = userData;
+  const { email, password, username, phone, referralCode, deviceFingerprint, ipAddress, userAgent } = userData;
 
   // Hash password
   const passwordHash = await bcrypt.hash(password, 10);
@@ -21,6 +21,7 @@ export const registerUser = async (userData) => {
         email,
         passwordHash,
         username,
+        phone,
         referralCode: username, // Username is also the referral code
         referredBy: referralCode || null,
         role: 'USER',

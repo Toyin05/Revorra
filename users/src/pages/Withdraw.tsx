@@ -1,711 +1,359 @@
 import { useAuth } from "@/context/AuthContext";
-import { getWallet } from "@/api/walletApi";
-import { requestWithdrawal, submitWithdrawal } from "@/api/withdrawalApi";
-import { requestCoupon, uploadCouponProof, getUserCoupons, redeemCoupon } from "@/api/couponsApi";
-import { useState, useEffect, useRef } from "react";
+import { getWallet, getTransactions } from "@/api/walletApi";
+import { requestWithdrawal, getWithdrawals } from "@/api/withdrawalApi";
+import { getCouponLink } from "@/api/settingsApi";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Wallet, Lock, X, Upload, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import { Wallet, Lock, ExternalLink, Loader2 } from "lucide-react";
 import BackButton from "@/components/BackButton";
 
-const wallets = [
-  { key: "referral" as const, label: "Referral Wallet", min: 35, balanceKey: "referralBalance" },
-  { key: "task" as const, label: "Task Wallet", min: 89, balanceKey: "taskBalance" },
-  { key: "onehub" as const, label: "OneHub Wallet", min: 16, balanceKey: "onehubBalance" },
+const WALLETS = [
+  { key: "REFERRAL", label: "Referral", min: 35, color: "purple", icon: "€" },
+  { key: "TASK", label: "Task", min: 89, color: "green", icon: "€" },
+  { key: "ONEHUB", label: "OneHub", min: 16, color: "blue", icon: "€" },
 ];
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const WALLET_COLORS: Record<string, { bg: string; border: string; text: string; glow: string }> = {
+  REFERRAL: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-600", glow: "shadow-purple-500/20" },
+  TASK: { bg: "bg-green-50", border: "border-green-200", text: "text-green-600", glow: "shadow-green-500/20" },
+  ONEHUB: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-600", glow: "shadow-blue-500/20" },
+};
 
 export default function WithdrawPage() {
   const { user, wallet: walletFromContext } = useAuth();
-  const [balances, setBalances] = useState<{ referralBalance: number; taskBalance: number; onehubBalance: number } | null>(null);
-  const [coupon, setCoupon] = useState("");
-  const [activeWallet, setActiveWallet] = useState<string | null>(null);
-  const [method, setMethod] = useState("bank");
+  const [wallet, setWallet] = useState<{ referralBalance: number; taskBalance: number; onehubBalance: number } | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+  const [amount, setAmount] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
-  const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  
-  // Coupon request modal states
-  const [couponModalOpen, setCouponModalOpen] = useState(false);
-  const [couponType, setCouponType] = useState<"REFERRAL" | "TASK" | "ONEHUB">("REFERRAL");
-  const [couponRequesting, setCouponRequesting] = useState(false);
-  const [couponPaymentInfo, setCouponPaymentInfo] = useState<{
-    requestId: string;
-    amount: number;
-    bankName: string;
-    accountNumber: string;
-    accountName: string;
-  } | null>(null);
-  
-  // Coupon redemption states - using object for per-card state
-  const [userCoupons, setUserCoupons] = useState<Array<{
-    id: string;
-    code: string;
-    type: string;
-    status: string;
-    amount?: number;
-    createdAt?: string;
-    couponCode?: string;
-    proofImage?: string;
-  }>>([]);
-  const [couponLoading, setCouponLoading] = useState(true);
-  const [redeemInputs, setRedeemInputs] = useState<Record<string, string>>({});
-  const [redeemLoading, setRedeemLoading] = useState<Record<string, boolean>>({});
-  const [redeemedCodes, setRedeemedCodes] = useState<Set<string>>(new Set());
-  
-  // View proof modal
-  const [viewProofImage, setViewProofImage] = useState<string | null>(null);
-  const [showRequests, setShowRequests] = useState(false);
-  
-  // Withdrawal form states
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawBankName, setWithdrawBankName] = useState("");
-  const [withdrawAccountNumber, setWithdrawAccountNumber] = useState("");
-  const [withdrawAccountName, setWithdrawAccountName] = useState("");
-  const [withdrawLoading, setWithdrawLoading] = useState(false);
-  const [withdrawError, setWithdrawError] = useState("");
-  
-  // Payment proof upload states
-  const [showUploadSection, setShowUploadSection] = useState(false);
-  const [proofImage, setProofImage] = useState<string>("");
-  const [proofPreview, setProofPreview] = useState<string>("");
-  const [uploading, setUploading] = useState(false);
-  const [proofSubmitted, setProofSubmitted] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [couponLink, setCouponLink] = useState("");
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
-  // Use wallet from context if available
-  const wallet = walletFromContext ?? balances ?? { referralBalance: 0, taskBalance: 0, onehubBalance: 0 };
+  // Get balance for selected wallet
+  const getBalance = (key: string) => {
+    if (!wallet) return 0;
+    switch (key) {
+      case "REFERRAL": return wallet.referralBalance;
+      case "TASK": return wallet.taskBalance;
+      case "ONEHUB": return wallet.onehubBalance;
+      default: return 0;
+    }
+  };
+
+  // Get min amount for selected wallet
+  const getMinAmount = (key: string) => {
+    const w = WALLETS.find(w => w.key === key);
+    return w?.min || 0;
+  };
 
   useEffect(() => {
-    const loadWallet = async () => {
+    const loadData = async () => {
       try {
-        const res = await getWallet();
-        setBalances(res.data.data);
+        // Load wallet
+        const walletRes = walletFromContext 
+          ? { data: { data: walletFromContext } }
+          : await getWallet();
+        setWallet(walletRes.data.data);
+        
+        // Load coupon link
+        try {
+          const couponRes = await getCouponLink();
+          setCouponLink(couponRes.data.data?.link || "");
+        } catch {
+          // If endpoint doesn't exist, use default
+          setCouponLink("");
+        }
+        
+        // Load withdrawal history
+        const withdrawRes = await getWithdrawals();
+        setWithdrawals(withdrawRes.data.data || []);
       } catch (err) {
-        console.error("Failed to load wallet:", err);
+        console.error("Failed to load data:", err);
+      } finally {
+        setLoadingHistory(false);
       }
     };
-    if (!walletFromContext) {
-      loadWallet();
-    }
+    loadData();
   }, [walletFromContext]);
 
-  // Fetch user coupons on mount
-  useEffect(() => {
-    const loadCoupons = async () => {
-      try {
-        const res = await getUserCoupons();
-        setUserCoupons(res.data.data || []);
-      } catch (err) {
-        console.error("Failed to load coupons:", err);
-      } finally {
-        setCouponLoading(false);
-      }
-    };
-    loadCoupons();
-  }, []);
-
-  if (!user) return null;
-
-  const handleRequestCoupon = async () => {
-    setCouponRequesting(true);
-    try {
-      const res = await requestCoupon(couponType);
-      const data = res.data.data;
-      setCouponPaymentInfo({
-        requestId: data.requestId,
-        amount: data.amount,
-        bankName: data.bankName,
-        accountNumber: data.accountNumber,
-        accountName: data.accountName,
-      });
-      toast.success("Payment instructions ready");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to request coupon");
-    } finally {
-      setCouponRequesting(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Invalid file type. Only JPEG, PNG, JPG, and WebP are allowed.");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedWallet) {
+      toast.error("Please select a wallet");
       return;
-    }
-
-    // Validate file size
-    if (file.size > MAX_SIZE) {
-      toast.error("File too large. Maximum size is 5MB.");
-      return;
-    }
-
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setProofImage(base64);
-      setProofPreview(base64);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSubmitProof = async () => {
-    if (!proofImage) {
-      toast.error("Please upload a payment screenshot");
-      return;
-    }
-
-    if (!couponPaymentInfo?.requestId) {
-      toast.error("Invalid request");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      await uploadCouponProof(couponPaymentInfo.requestId, proofImage);
-      setProofSubmitted(true);
-      toast.success("Payment proof submitted successfully!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to upload proof");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleRedeemCoupon = async (couponId: string, code: string) => {
-    if (!code.trim()) {
-      toast.error("Please enter a coupon code");
-      return;
-    }
-
-    setRedeemLoading(prev => ({ ...prev, [couponId]: true }));
-    try {
-      await redeemCoupon(code.trim());
-      setRedeemedCodes(prev => new Set(prev).add(code.trim()));
-      setRedeemInputs(prev => ({ ...prev, [couponId]: "" }));
-      toast.success("Withdrawal unlocked successfully!");
-      
-      // Refresh coupons list
-      const res = await getUserCoupons();
-      setUserCoupons(res.data.data || []);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to redeem coupon");
-    } finally {
-      setRedeemLoading(prev => ({ ...prev, [couponId]: false }));
-    }
-  };
-
-  const handleCloseModal = () => {
-    setCouponModalOpen(false);
-    setCouponPaymentInfo(null);
-    setShowUploadSection(false);
-    setProofImage("");
-    setProofPreview("");
-    setProofSubmitted(false);
-  };
-
-  const handleIHavePaid = () => {
-    setShowUploadSection(true);
-  };
-
-  const handleSubmitWithdrawal = async () => {
-    setWithdrawLoading(true);
-    setWithdrawError("");
-    try {
-      await submitWithdrawal({
-        amount: parseFloat(withdrawAmount),
-        method: 'bank_transfer',
-        bankName: withdrawBankName,
-        accountNumber: withdrawAccountNumber,
-        accountName: withdrawAccountName
-      });
-      toast.success("Withdrawal request submitted successfully!");
-      setWithdrawAmount("");
-      setWithdrawBankName("");
-      setWithdrawAccountNumber("");
-      setWithdrawAccountName("");
-    } catch (err: any) {
-      setWithdrawError(err.response?.data?.message || "Withdrawal failed");
-    } finally {
-      setWithdrawLoading(false);
-    }
-  };
-
-  const handleWithdraw = async (walletKey: string, min: number) => {
-    const balance = wallet[walletKey as keyof typeof wallet] ?? 0;
-    const withdrawAmount = parseFloat(amount);
-
-    if (isNaN(withdrawAmount) || withdrawAmount < min) { 
-      toast.error(`Minimum withdrawal is €${min}`); 
-      return; 
     }
     
-    if (withdrawAmount > balance) { 
-      toast.error("Insufficient balance"); 
-      return; 
-    }
-
-    if (!coupon.trim()) {
-      toast.error("Please enter a coupon code");
+    const numAmount = parseFloat(amount);
+    const minAmount = getMinAmount(selectedWallet);
+    
+    if (isNaN(numAmount) || numAmount <= 0) {
+      toast.error("Please enter a valid amount");
       return;
     }
-
+    
+    if (numAmount < minAmount) {
+      toast.error(`Minimum withdrawal is €${minAmount} for ${selectedWallet} wallet`);
+      return;
+    }
+    
+    if (numAmount > getBalance(selectedWallet)) {
+      toast.error("Insufficient balance");
+      return;
+    }
+    
+    if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
+      toast.error("Please fill all bank details");
+      return;
+    }
+    
     setLoading(true);
     try {
       await requestWithdrawal({
-        walletType: walletKey,
-        amount: withdrawAmount,
-        method,
+        walletType: selectedWallet,
+        amount: numAmount,
+        couponCode: couponCode || undefined,
+        method: "bank_transfer",
         bankName,
         accountNumber,
         accountName,
-        couponCode: coupon,
       });
       
-      toast.success(`Withdrawal request of €${withdrawAmount.toFixed(2)} submitted!`);
-      setCoupon("");
+      toast.success(`Withdrawal request of €${numAmount.toFixed(2)} submitted!`);
+      
+      // Reset form
       setAmount("");
+      setCouponCode("");
       setBankName("");
       setAccountNumber("");
       setAccountName("");
-      setActiveWallet(null);
+      setSelectedWallet(null);
       
-      // Refresh balances
-      const res = await getWallet();
-      setBalances(res.data.data);
+      // Refresh wallet
+      const walletRes = await getWallet();
+      setWallet(walletRes.data.data);
+      
+      // Refresh history
+      const withdrawRes = await getWithdrawals();
+      setWithdrawals(withdrawRes.data.data || []);
     } catch (err: any) {
-      console.error("Withdrawal failed:", err);
       toast.error(err.response?.data?.message || "Withdrawal failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleGetCoupon = () => {
+    if (!couponLink) return;
+
+    let finalLink = couponLink.trim();
+
+    // Ensure the link has a protocol
+    if (!finalLink.startsWith('http://') && !finalLink.startsWith('https://')) {
+      finalLink = 'https://' + finalLink;
+    }
+
+    // Add prefilled message for WhatsApp
+    if (finalLink.includes('wa.me')) {
+      const message = encodeURIComponent(
+        `Hello! I would like to request a coupon code for withdrawal on Revorra.\n\nUsername: ${user?.username}\nEmail: ${user?.email}\n\nPlease generate a coupon code for me. Thank you!`
+      );
+      finalLink = `${finalLink}?text=${message}`;
+    }
+
+    // For Telegram, open as-is (Telegram handles its own prefilled messages differently)
+
+    window.open(finalLink, '_blank');
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "PENDING":
+        return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">Pending</span>;
+      case "APPROVED":
+        return <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Approved</span>;
+      case "REJECTED":
+        return <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">Rejected</span>;
+      default:
+        return <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">{status || "Unknown"}</span>;
+    }
+  };
+
+  const displayWallet = walletFromContext || wallet || { referralBalance: 0, taskBalance: 0, onehubBalance: 0 };
+
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <BackButton />
       <h1 className="text-xl font-display font-bold mb-1">Withdraw</h1>
       <p className="text-sm text-muted-foreground mb-6">Cash out your earnings</p>
 
-      {/* Request Coupon Button */}
-      <button 
-        onClick={() => setCouponModalOpen(true)}
-        className="w-full mb-6 gradient-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition shadow-sm"
-      >
-        Request Coupon Code
-      </button>
-
-      {/* User Coupons Section */}
-      {!couponLoading && userCoupons.length > 0 && (
-        <div className="mb-6 bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
-          <h3 className="font-display font-semibold text-base mb-3">Your Coupons</h3>
-          <div className="space-y-3">
-            {userCoupons.map((couponItem) => {
-              const isRedeemed = redeemedCodes.has(couponItem.code);
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Wallet Selection */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Select Wallet</label>
+          <div className="grid grid-cols-3 gap-3">
+            {WALLETS.map((w) => {
+              const isSelected = selectedWallet === w.key;
+              const balance = w.key === "REFERRAL" ? displayWallet.referralBalance 
+                : w.key === "TASK" ? displayWallet.taskBalance 
+                : displayWallet.onehubBalance;
+              const colors = WALLET_COLORS[w.key];
+              
               return (
-                <div key={couponItem.id} className="bg-muted/50 rounded-xl p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground capitalize">{couponItem.type} Wallet</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${couponItem.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {couponItem.status === 'APPROVED' ? (isRedeemed ? 'Unlocked' : 'Ready') : couponItem.status}
-                    </span>
-                  </div>
-                  {couponItem.status === 'APPROVED' && (
-                    <>
-                      <div className="bg-background rounded-lg p-2 mb-3">
-                        <p className="text-xs text-muted-foreground">Your Coupon Code</p>
-                        <p className="font-mono font-bold text-lg">{couponItem.code}</p>
-                      </div>
-                      {!isRedeemed ? (
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={redeemInputs[couponItem.id] || ''}
-                            onChange={(e) => setRedeemInputs(prev => ({ ...prev, [couponItem.id]: e.target.value }))}
-                            placeholder="Enter coupon code"
-                            className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                          />
-                          <button
-                            onClick={() => handleRedeemCoupon(couponItem.id, redeemInputs[couponItem.id] || '')}
-                            disabled={redeemLoading[couponItem.id]}
-                            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50 cursor-pointer"
-                          >
-                            {redeemLoading[couponItem.id] ? "..." : "Redeem"}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="text-center text-sm text-green-600 font-medium">
-                          ✓ Withdrawal Unlocked
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
+                <button
+                  key={w.key}
+                  type="button"
+                  onClick={() => setSelectedWallet(w.key)}
+                  className={`
+                    relative p-4 rounded-2xl border-2 transition-all cursor-pointer text-left
+                    ${isSelected 
+                      ? `${colors.border} ${colors.bg} shadow-lg ${colors.glow} scale-[1.02]` 
+                      : "border-border hover:border-muted-foreground/30 bg-card"
+                    }
+                  `}
+                >
+                  <p className="text-xs text-muted-foreground mb-1">{w.label}</p>
+                  <p className={`text-lg font-display font-bold ${isSelected ? colors.text : ""}`}>
+                    €{(balance ?? 0).toFixed(2)}
+                  </p>
+                </button>
               );
             })}
           </div>
         </div>
-      )}
 
-      {/* Coupon Requests Dashboard */}
-      <div className="mb-6 bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
-        <button 
-          onClick={() => setShowRequests(!showRequests)}
-          className="w-full flex items-center justify-between mb-4 cursor-pointer"
-        >
-          <h3 className="font-semibold text-sm">Coupon Requests</h3>
-          {showRequests ? (
-            <ChevronUp className="h-5 w-5 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+        {/* Amount */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Amount</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Enter amount"
+              className="w-full border rounded-xl px-4 py-3 pl-8 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+            />
+          </div>
+          {selectedWallet && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Min: €{getMinAmount(selectedWallet)} for {WALLETS.find(w => w.key === selectedWallet)?.label} wallet
+            </p>
           )}
-        </button>
-        
-        {showRequests && (
-          <>
-            {couponLoading ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
-            ) : userCoupons.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No coupon requests yet</p>
-            ) : (
-              <div className="space-y-3">
-                {userCoupons.map((request) => (
-                  <div key={request.id} className="bg-muted/50 rounded-xl p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground capitalize">{request.type} Wallet</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        request.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 
-                        request.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {request.status}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">₦{request.amount.toLocaleString()}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(request.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    
-                    {request.status === 'APPROVED' && request.couponCode && (
-                      <div style={{
-                        marginTop: '12px',
-                        padding: '12px',
-                        backgroundColor: '#f0fdf4',
-                        border: '2px solid #22c55e',
-                        borderRadius: '8px'
-                      }}>
-                        <p style={{fontSize: '12px', color: '#16a34a', fontWeight: '600', marginBottom: '6px'}}>
-                          🎟️ Your Coupon Code:
-                        </p>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                          <p style={{
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            letterSpacing: '3px',
-                            color: '#15803d',
-                            flex: 1
-                          }}>
-                            {request.couponCode}
-                          </p>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(request.couponCode || '');
-                              toast.success('Coupon code copied to clipboard!');
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#22c55e',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}
-                          >
-                            Copy
-                          </button>
-                        </div>
-                        <p style={{fontSize: '11px', color: '#16a34a', marginTop: '4px'}}>
-                          Use this code to unlock your withdrawal
-                        </p>
-                      </div>
-                    )}
-                    
-                    {request.proofImage && (
-                      <button
-                        onClick={() => setViewProofImage(request.proofImage || null)}
-                        className="text-xs text-primary hover:underline mt-2 cursor-pointer"
-                      >
-                        View Proof
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Wallet Balances - Read Only */}
-      <div className="mb-6 bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
-        <h3 className="font-display font-semibold text-base mb-4">Wallet Balances</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Referral</p>
-            <p className="text-lg font-display font-bold text-primary">€{(wallet.referralBalance ?? 0).toFixed(2)}</p>
-          </div>
-          <div className="bg-gradient-to-br from-green-500/5 to-green-500/10 rounded-xl p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Task</p>
-            <p className="text-lg font-display font-bold text-green-600">€{(wallet.taskBalance ?? 0).toFixed(2)}</p>
-          </div>
-          <div className="bg-gradient-to-br from-blue-500/5 to-blue-500/10 rounded-xl p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">OneHub</p>
-            <p className="text-lg font-display font-bold text-blue-600">€{(wallet.onehubBalance ?? 0).toFixed(2)}</p>
-          </div>
         </div>
-      </div>
 
-      {/* Withdrawal Section */}
-      {userCoupons.some(c => c.status === 'REDEEMED') ? (
-        <div className="mb-6 bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
-          <h3 className="font-display font-semibold text-base mb-4">Withdraw to Bank</h3>
-          {withdrawError && <p className="text-sm text-red-500 mb-3">{withdrawError}</p>}
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Amount</label>
-              <input 
-                type="number" 
-                placeholder="Enter amount in EUR"
-                value={withdrawAmount} 
-                onChange={e => setWithdrawAmount(e.target.value)} 
-                className="w-full border border-border/50 rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" 
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Bank Name</label>
-              <input 
-                placeholder="Enter bank name"
-                value={withdrawBankName} 
-                onChange={e => setWithdrawBankName(e.target.value)} 
-                className="w-full border border-border/50 rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" 
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Account Number</label>
-              <input 
-                placeholder="Enter account number"
-                value={withdrawAccountNumber} 
-                onChange={e => setWithdrawAccountNumber(e.target.value)} 
-                className="w-full border border-border/50 rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" 
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Account Name</label>
-              <input 
-                placeholder="Enter account name"
-                value={withdrawAccountName} 
-                onChange={e => setWithdrawAccountName(e.target.value)} 
-                className="w-full border border-border/50 rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" 
-              />
-            </div>
-          </div>
-          <button 
-            onClick={handleSubmitWithdrawal} 
-            disabled={withdrawLoading}
-            className="w-full mt-4 gradient-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50"
-          >
-            {withdrawLoading ? 'Processing...' : 'Submit Withdrawal Request'}
-          </button>
+        {/* Coupon Code */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Coupon Code</label>
+          <input
+            type="text"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value)}
+            placeholder="Enter your coupon code"
+            className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+          />
         </div>
-      ) : (
-        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
-          <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Lock className="h-6 w-6 text-amber-600" />
+
+        {/* Bank Details */}
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Bank Name</label>
+            <input
+              type="text"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              placeholder="Enter bank name"
+              className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+            />
           </div>
-          <p className="font-semibold text-amber-800">Withdrawal Locked</p>
-          <p className="text-sm text-amber-700 mt-1">Request and redeem a coupon to unlock withdrawal</p>
-        </div>
-      )}
-
-      {/* Coupon Request Modal */}
-      {couponModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-display font-bold">
-                {proofSubmitted ? "Success" : showUploadSection ? "Upload Payment Proof" : "Request Coupon Code"}
-              </h2>
-              <button onClick={handleCloseModal} className="p-1 hover:bg-muted rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {proofSubmitted ? (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">✓</span>
-                </div>
-                <p className="font-semibold text-lg mb-2">Payment proof submitted</p>
-                <p className="text-sm text-muted-foreground">Awaiting admin approval</p>
-              </div>
-            ) : !couponPaymentInfo ? (
-              <>
-                <div className="mb-4">
-                  <label className="text-sm text-muted-foreground mb-2 block">Select wallet type:</label>
-                  <select 
-                    value={couponType} 
-                    onChange={e => setCouponType(e.target.value as "REFERRAL" | "TASK" | "ONEHUB")}
-                    className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
-                  >
-                    <option value="REFERRAL">Referral Wallet</option>
-                    <option value="TASK">Task Wallet</option>
-                    <option value="ONEHUB">OneHub Wallet</option>
-                  </select>
-                </div>
-                <button 
-                  onClick={handleRequestCoupon} 
-                  disabled={couponRequesting}
-                  className="w-full gradient-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50"
-                >
-                  {couponRequesting ? "Processing..." : "Request Coupon"}
-                </button>
-              </>
-            ) : !showUploadSection ? (
-              <div className="space-y-4">
-                <div className="bg-muted/50 rounded-xl p-4">
-                  <p className="text-sm font-medium text-center mb-3">Make Payment</p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Amount:</span>
-                      <span className="font-semibold">₦{couponPaymentInfo.amount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Bank Name:</span>
-                      <span className="font-semibold">{couponPaymentInfo.bankName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Account Number:</span>
-                      <span className="font-semibold">{couponPaymentInfo.accountNumber}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Account Name:</span>
-                      <span className="font-semibold">{couponPaymentInfo.accountName}</span>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleIHavePaid} 
-                  className="w-full gradient-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition"
-                >
-                  I Have Paid
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-muted/50 rounded-xl p-4">
-                  <p className="text-sm font-medium text-center mb-3">Make Payment</p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Amount:</span>
-                      <span className="font-semibold">₦{couponPaymentInfo.amount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Bank Name:</span>
-                      <span className="font-semibold">{couponPaymentInfo.bankName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Account Number:</span>
-                      <span className="font-semibold">{couponPaymentInfo.accountNumber}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Account Name:</span>
-                      <span className="font-semibold">{couponPaymentInfo.accountName}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upload Section */}
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-4">
-                  <p className="text-sm font-medium mb-3">Upload Payment Screenshot</p>
-                  
-                  {!proofPreview ? (
-                    <div className="text-center">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/jpg,image/webp"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-xl text-sm cursor-pointer hover:bg-muted/80 transition"
-                      >
-                        <Upload className="h-4 w-4" />
-                        Upload Screenshot
-                      </button>
-                      <p className="text-xs text-muted-foreground mt-2">JPEG, PNG, JPG, WebP (max 5MB)</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <img 
-                        src={proofPreview} 
-                        alt="Payment proof preview" 
-                        className="w-full h-40 object-contain rounded-lg bg-muted"
-                      />
-                      <button
-                        onClick={() => { setProofImage(""); setProofPreview(""); }}
-                        className="text-sm text-red-500 hover:underline cursor-pointer"
-                      >
-                        Remove and upload different image
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <button 
-                  onClick={handleSubmitProof}
-                  disabled={!proofImage || uploading}
-                  className="w-full gradient-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50"
-                >
-                  {uploading ? "Uploading..." : "Submit Payment Proof"}
-                </button>
-              </div>
-            )}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Account Number</label>
+            <input
+              type="text"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              placeholder="Enter account number"
+              className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+            />
           </div>
-        </div>
-      )}
-
-      {/* Proof Image Modal */}
-      {viewProofImage && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setViewProofImage(null)}>
-          <div className="bg-card rounded-2xl p-4 max-w-lg w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Payment Proof</h3>
-              <button onClick={() => setViewProofImage(null)} className="p-1 hover:bg-muted rounded-lg cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <img 
-              src={viewProofImage} 
-              alt="Payment proof" 
-              className="w-full rounded-lg"
+          <div>
+            <label className="text-sm font-medium mb-2 block">Account Name</label>
+            <input
+              type="text"
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              placeholder="Enter account name"
+              className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
             />
           </div>
         </div>
+
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full gradient-primary text-primary-foreground py-4 rounded-xl font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>Cashout / Withdraw</>
+          )}
+        </button>
+      </form>
+
+      {/* Coupon Link Button */}
+      {couponLink && (
+        <button
+          type="button"
+          onClick={handleGetCoupon}
+          className="w-full mt-4 border border-primary/30 bg-primary/5 rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm text-primary font-medium hover:bg-primary/10 hover:border-primary/50 transition cursor-pointer"
+        >
+          <Lock className="h-4 w-4" />
+          Don't have a coupon code? Request one now
+          <ExternalLink className="h-4 w-4" />
+        </button>
       )}
+
+      {/* Withdrawal History */}
+      <div className="mt-8">
+        <h2 className="text-lg font-display font-bold mb-4">Withdrawal History</h2>
+        {loadingHistory ? (
+          <div className="text-center py-8 text-muted-foreground">Loading...</div>
+        ) : withdrawals.length === 0 ? (
+          <div className="bg-card border rounded-2xl p-6 text-center text-sm text-muted-foreground">
+            No withdrawal history yet
+          </div>
+        ) : (
+          <div className="bg-card border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-5 gap-2 px-4 py-3 border-b bg-muted/50 text-xs font-semibold text-muted-foreground">
+              <span className="col-span-2">Date</span>
+              <span>Amount</span>
+              <span>Wallet</span>
+              <span>Status</span>
+            </div>
+            {withdrawals.map((w) => (
+              <div key={w.id} className="grid grid-cols-5 gap-2 px-4 py-3 border-b last:border-0 text-sm">
+                <span className="col-span-2 text-xs text-muted-foreground">
+                  {w.createdAt ? new Date(w.createdAt).toLocaleString('en-GB', { 
+                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+                  }) : '-'}
+                </span>
+                <span className="text-xs font-medium">€{(w.amount ?? 0).toFixed(2)}</span>
+                <span className="text-xs capitalize text-muted-foreground">{w.walletType?.toLowerCase() || '-'}</span>
+                <span>{getStatusBadge(w.status)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

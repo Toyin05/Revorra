@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Menu, X, Shield, LayoutDashboard, Users, ListTodo, Share2, Gamepad2, Wallet, Ticket, Phone, Bell, BarChart3, Settings, LogOut, Megaphone, ClipboardList } from "lucide-react";
+import { Menu, X, Shield, LayoutDashboard, Users, ListTodo, Share2, Gamepad2, Wallet, Ticket, Bell, BarChart3, Settings, LogOut, Megaphone, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import AdminNotificationBell from "@/components/ui/AdminNotificationBell";
 
 const menuItems = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -12,8 +13,6 @@ const menuItems = [
   { to: "/admin/games", icon: Gamepad2, label: "Games Control" },
   { to: "/admin/withdrawals", icon: Wallet, label: "Withdrawals" },
   { to: "/admin/coupons", icon: Ticket, label: "Coupons" },
-  { to: "/admin/coupon-requests", icon: ClipboardList, label: "Coupon Requests" },
-  { to: "/admin/vtu", icon: Phone, label: "VTU" },
   { to: "/admin/notifications", icon: Bell, label: "Notifications" },
   { to: "/admin/announcements", icon: Megaphone, label: "Announcements" },
   { to: "/admin/analytics", icon: BarChart3, label: "Analytics" },
@@ -31,9 +30,12 @@ export function AdminMobileNav() {
           <Shield className="h-5 w-5 text-primary" />
           <span className="font-display font-bold text-gradient">Admin</span>
         </div>
-        <button onClick={() => setOpen(!open)} className="cursor-pointer p-1">
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <AdminNotificationBell />
+          <button onClick={() => setOpen(!open)} className="cursor-pointer p-1">
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </header>
       {open && (
         <div className="absolute inset-x-0 top-[57px] z-50 bg-card border-b shadow-elevated max-h-[80vh] overflow-y-auto">
