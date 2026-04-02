@@ -480,6 +480,39 @@ router.get('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// DELETE /api/admin/users/:id - Delete user
+router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Delete in correct order to avoid foreign key errors
+    await prisma.userActivity.deleteMany({ where: { userId: id } });
+    await prisma.device.deleteMany({ where: { userId: id } });
+    await prisma.taskCompletion.deleteMany({ where: { userId: id } });
+    await prisma.transaction.deleteMany({ where: { userId: id } });
+    await prisma.vTUTransaction.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.gamePlay.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.withdrawalRequest.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.couponRequest.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.sponsoredShare.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.referral.deleteMany({
+      where: { OR: [{ referrerId: id }, { referredUserId: id }] }
+    }).catch(() => {});
+    await prisma.wallet.deleteMany({ where: { userId: id } });
+    await prisma.user.delete({ where: { id } });
+
+    return res.status(200).json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // PATCH /api/admin/users/:id/suspend - Toggle user suspension
 router.patch('/users/:id/suspend', authenticateToken, requireAdmin, async (req, res) => {
   try {
