@@ -31,31 +31,6 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// Rate limiting - General
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { success: false, message: 'Too many requests. Please try again later.' }
-});
-
-// Rate limiting - Auth routes (stricter)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
-  message: { success: false, message: 'Too many login attempts. Please try again later.' }
-});
-
-// Rate limiting - VTU routes (prevent abuse)
-const vtuLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20,
-  message: { success: false, message: 'Too many VTU requests. Please try again later.' }
-});
-
-app.use(generalLimiter);
-app.use('/api/auth', authLimiter);
-app.use('/api/vtu', vtuLimiter);
-
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
@@ -81,6 +56,32 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+// Rate limiting - General
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { success: false, message: 'Too many requests. Please try again later.' }
+});
+
+// Rate limiting - Auth routes (stricter)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50,
+  message: { success: false, message: 'Too many login attempts. Please try again later.' }
+});
+
+// Rate limiting - VTU routes (prevent abuse)
+const vtuLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20,
+  message: { success: false, message: 'Too many VTU requests. Please try again later.' }
+});
+
+app.use(generalLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api/vtu', vtuLimiter);
+
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
