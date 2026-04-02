@@ -34,8 +34,8 @@ export default function AdminLogin() {
     } else {
       toast({ 
         title: "Login failed", 
-        description: result.error || "Please check your credentials.", 
-        variant: "destructive" 
+        description: result.error ? "Invalid email or password." : "Please check your credentials.",
+        variant: "default" 
       });
     }
     

@@ -19,9 +19,9 @@ const isValidEmail = (email) => {
  * @returns {boolean} True if valid
  */
 const isValidUsername = (username) => {
-  // Username must contain only letters, numbers, and underscores
-  const usernameRegex = /^[a-zA-Z0-9_]+$/;
-  return usernameRegex.test(username) && username.length >= 3 && username.length <= 30;
+  // Username can contain letters, numbers, underscores and dots (3-30 chars)
+  const usernameRegex = /^[a-zA-Z0-9_\.]{3,30}$/;
+  return usernameRegex.test(username);
 };
 
 /**
@@ -49,7 +49,7 @@ export const register = async (req, res) => {
     if (!isValidUsername(username)) {
       return res.status(400).json({
         success: false,
-        message: 'Username must contain only letters, numbers, and underscores (3-30 characters).',
+        message: 'Username must be 3-30 characters and can only contain letters, numbers, underscores and dots.',
       });
     }
 

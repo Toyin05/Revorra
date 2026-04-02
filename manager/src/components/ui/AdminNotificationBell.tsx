@@ -141,7 +141,7 @@ export default function AdminNotificationBell({ refreshTrigger = 0 }) {
         </div>
 
         <ScrollArea className="h-[300px]">
-          {data.notifications.length === 0 ? (
+          {(data.notifications || []).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
               <AlertCircle className="h-10 w-10 mb-2 opacity-50" />
               <p className="text-sm">No new notifications</p>

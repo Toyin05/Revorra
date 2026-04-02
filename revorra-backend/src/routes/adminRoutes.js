@@ -37,6 +37,29 @@ const requireAdmin = async (req, res, next) => {
   next();
 };
 
+// GET /api/admin/notifications - Get admin notification counts (pending tasks, withdrawals, coupons)
+router.get('/notifications', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const [pendingTasks, pendingWithdrawals, pendingCoupons] = await Promise.all([
+      prisma.taskCompletion.count({ where: { status: 'PENDING' } }),
+      prisma.withdrawalRequest.count({ where: { status: 'PENDING' } }),
+      prisma.couponRequest.count({ where: { status: 'PENDING' } }).catch(() => 0)
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        pendingTasks,
+        pendingWithdrawals,
+        pendingCoupons,
+        total: pendingTasks + pendingWithdrawals + pendingCoupons
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/admin/withdrawals - Get all withdrawals
 router.get('/withdrawals', authenticateToken, requireAdmin, async (req, res) => {
   try {

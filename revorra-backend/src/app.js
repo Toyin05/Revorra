@@ -56,25 +56,23 @@ app.use(generalLimiter);
 app.use('/api/auth', authLimiter);
 app.use('/api/vtu', vtuLimiter);
 
-// CORS - Tighten to only allow actual domains
+// CORS configuration
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       process.env.ADMIN_URL,
       'http://localhost:8080',
+      'http://localhost:8081',
       'http://localhost:5173',
       'http://localhost:5174',
-      'http://localhost:8081',
-      'https://revorra.vercel.app',
-      'https://revorra-admin.vercel.app'
+      'http://localhost:3000',
     ].filter(Boolean);
 
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true);
     }
   },
   credentials: true,
@@ -82,6 +80,7 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
+app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
 // Body parsing middleware
