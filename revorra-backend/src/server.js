@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET === 'super_s
   process.exit(1);
 }
 
-const PORT = config.port;
+const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
@@ -22,7 +22,7 @@ async function startServer() {
     console.log('✓ Database connected successfully');
     
     // Start the server
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
