@@ -35,8 +35,6 @@ export default function AdminSettings() {
         setPlatformName(res.data.data.platformName || "Revorra");
         setTokenDisplay(res.data.data.topupwizardToken || "");
       }
-      // Also load TW balance
-      loadTWBalance();
     } catch (error) {
       console.error("Failed to load settings:", error);
     } finally {
@@ -44,7 +42,7 @@ export default function AdminSettings() {
     }
   };
 
-  const loadTWBalance = async () => {
+  const handleRefreshBalance = async () => {
     setRefreshingBalance(true);
     try {
       const res = await getTWBalance();
@@ -52,8 +50,8 @@ export default function AdminSettings() {
       const funds = res.data?.data?.data?.funds || res.data?.data?.funds || '0';
       setTwBalance(`₦${funds}`);
     } catch (error) {
-      console.error("Failed to load TW balance:", error);
-      setTwBalance("Failed to fetch");
+      console.error("Failed to fetch TW balance:", error);
+      setTwBalance("Failed to fetch — check your token");
     } finally {
       setRefreshingBalance(false);
     }
@@ -165,25 +163,31 @@ export default function AdminSettings() {
 
             <div className="pt-4 border-t">
               <Label className="text-muted-foreground">TopupWizard Wallet Balance</Label>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-2xl font-bold">
-                  {twBalance !== null ? twBalance : "Unable to fetch"}
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={loadTWBalance}
-                  disabled={refreshingBalance}
-                  className="cursor-pointer"
-                >
-                  {refreshingBalance ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-1" />
-                  )}
-                  Refresh Balance
-                </Button>
-              </div>
+              {getMaskedToken(tokenDisplay) === 'No token set' ? (
+                <p className="mt-2 text-sm" style={{ color: '#9ca3af' }}>
+                  No token configured. Enter your token above to check balance.
+                </p>
+              ) : (
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-2xl font-bold">
+                    {twBalance !== null ? twBalance : 'Click refresh to check'}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleRefreshBalance}
+                    disabled={refreshingBalance}
+                    className="cursor-pointer"
+                  >
+                    {refreshingBalance ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                    )}
+                    Refresh Balance
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
