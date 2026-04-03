@@ -55,6 +55,15 @@ function getSpinReward() {
   return 0;
 }
 
+// TicTacToe reward function - €0.20 to €0.50 for wins
+const getTicTacToeReward = () => {
+  const rand = Math.random();
+  if (rand < 0.50) return 0.20; // 50% chance
+  if (rand < 0.80) return 0.30; // 30% chance
+  if (rand < 0.95) return 0.40; // 15% chance
+  return 0.50;                   // 5% chance
+};
+
 // Generate unique session ID
 function generateSessionId() {
   return `game_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -161,9 +170,26 @@ router.post('/spin', authenticateToken, async (req, res) => {
     // Get spin reward from backend (NOT frontend)
     const reward = getSpinReward();
 
-    // Credit reward securely using the service
+    // Credit reward securely
     if (reward > 0) {
-      await creditGameReward(userId, reward, gameType, sessionId);
+      await prisma.wallet.update({
+        where: { userId },
+        data: {
+          onehubBalance: {
+            increment: reward
+          }
+        }
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId,
+          type: 'GAME_REWARD',
+          amount: reward,
+          description: 'Spin the wheel win reward',
+          walletType: 'ONEHUB',
+        }
+      });
     }
 
     // Record game play
@@ -187,7 +213,7 @@ router.post('/spin', authenticateToken, async (req, res) => {
       data: {
         reward: reward,
         remainingPlays: Math.max(0, remainingPlays),
-        oneHubBalance: updatedWallet?.onehubBalance || 0,
+        wallet: updatedWallet,
         message: reward > 0 ? `You won €${reward}!` : 'Better luck next time!'
       }
     });
@@ -224,7 +250,7 @@ router.post('/tictactoe', authenticateToken, async (req, res) => {
 
     // Determine game result based on board state
     let result = 'draw';
-    let reward = 0;
+    let playerWon = false;
 
     // Simple win detection - check if X (player) won
     const checkWinner = (boardState) => {
@@ -241,24 +267,7 @@ router.post('/tictactoe', authenticateToken, async (req, res) => {
       const winner = checkWinner(board);
       if (winner === 'X') {
         result = 'win';
-        // Weighted reward: €0.20 (45%), €0.25 (25%), €0.30 (15%), €0.40 (10%), €0.50 (5%)
-        const TICTACTOE_REWARDS = [
-          { value: 0.20, weight: 45 },
-          { value: 0.25, weight: 25 },
-          { value: 0.30, weight: 15 },
-          { value: 0.40, weight: 10 },
-          { value: 0.50, weight: 5 }
-        ];
-        const totalWeight = TICTACTOE_REWARDS.reduce((sum, r) => sum + r.weight, 0);
-        const random = Math.random() * totalWeight;
-        let cumulative = 0;
-        for (const r of TICTACTOE_REWARDS) {
-          cumulative += r.weight;
-          if (random <= cumulative) {
-            reward = r.value;
-            break;
-          }
-        }
+        playerWon = true;
       } else if (winner === 'O') {
         result = 'loss';
       } else if (board.every(cell => cell !== null)) {
@@ -266,22 +275,41 @@ router.post('/tictactoe', authenticateToken, async (req, res) => {
       }
     }
 
+    // Only give reward if player WON
+    const rewardAmount = playerWon ? getTicTacToeReward() : 0;
+
     // Credit reward if player won
-    if (reward > 0) {
-      await creditGameReward(userId, reward, gameType, sessionId);
+    if (rewardAmount > 0) {
+      await prisma.wallet.update({
+        where: { userId },
+        data: {
+          onehubBalance: {
+            increment: rewardAmount
+          }
+        }
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId,
+          type: 'GAME_REWARD',
+          amount: rewardAmount,
+          description: 'TicTacToe win reward',
+          walletType: 'ONEHUB',
+        }
+      });
     }
 
-    // Record game play
+    // After game result is determined, always save to DB:
     await prisma.gamePlay.create({
       data: {
         userId,
-        gameType,
-        reward: reward
+        gameType: 'TICTACTOE',
+        reward: rewardAmount
       }
     });
 
-    // Get updated wallet balance
-    const wallet = await prisma.wallet.findUnique({
+    const updatedWallet = await prisma.wallet.findUnique({
       where: { userId }
     });
 
@@ -291,9 +319,9 @@ router.post('/tictactoe', authenticateToken, async (req, res) => {
       success: true,
       data: {
         result: result,
-        reward: reward,
+        reward: rewardAmount,
         remainingPlays: Math.max(0, remainingPlays),
-        oneHubBalance: wallet?.onehubBalance || 0
+        wallet: updatedWallet
       }
     });
   } catch (error) {

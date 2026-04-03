@@ -15,6 +15,8 @@ export default function Announcements() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [showFullImage, setShowFullImage] = useState(false);
   const [form, setForm] = useState({
     title: "",
     message: "",
@@ -50,13 +52,14 @@ export default function Announcements() {
       await createAnnouncement({
         title: form.title,
         message: form.message,
-        image: form.image,
+        image: imageUrl,
         ctaLink: form.ctaLink
       });
       
       toast({ title: "Announcement created successfully" });
       setOpen(false);
       setForm({ title: "", message: "", image: "", ctaLink: "", active: true });
+      setImageUrl("");
       loadAnnouncements();
     } catch (error) {
       toast({ title: "Failed to create announcement", variant: "destructive" });
@@ -104,7 +107,7 @@ export default function Announcements() {
               <Plus className="h-4 w-4 mr-1" /> New Announcement
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent style={{ maxHeight: '80vh', overflowY: 'auto' }}>
             <DialogHeader><DialogTitle>Create Announcement</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
@@ -123,14 +126,83 @@ export default function Announcements() {
                   placeholder="Announcement message" 
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Image URL (optional)</Label>
-                <Input 
-                  value={form.image} 
-                  onChange={(e) => setForm({ ...form, image: e.target.value })} 
-                  placeholder="https://example.com/image.jpg" 
-                />
-              </div>
+{/* Image Upload Section */}
+<div className="space-y-2">
+  <Label>Announcement Image</Label>
+
+  {/* Upload button */}
+  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+    <input
+      type="file"
+      accept="image/*"
+      id="announcement-image"
+      style={{ display: 'none' }}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setImageUrl(ev.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+      }}
+    />
+    <Button
+      className="gradient-primary cursor-pointer"
+      onClick={() => document.getElementById('announcement-image')?.click()}
+    >
+      Upload Image
+    </Button>
+    {imageUrl && imageUrl.startsWith('data:') && (
+      <span style={{ color: '#22c55e', fontSize: '13px' }}>✓ Image selected</span>
+    )}
+  </div>
+
+  {/* OR URL input */}
+  <Input
+    type="text"
+    placeholder="Or paste image URL here"
+    value={imageUrl?.startsWith('data:') ? '' : (imageUrl || '')}
+    onChange={(e) => setImageUrl(e.target.value)}
+  />
+
+  {/* Preview */}
+  {imageUrl && (
+    <img
+      src={imageUrl}
+      alt="Preview"
+      style={{ width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px', marginTop: '8px', cursor: 'pointer' }}
+      onClick={() => setShowFullImage(true)}
+    />
+  )}
+
+  {/* Full Image Modal */}
+  {showFullImage && (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0,0,0,0.8)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000
+      }}
+      onClick={() => setShowFullImage(false)}
+    >
+      <img
+        src={imageUrl}
+        alt="Full Preview"
+        style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  )}
+</div>
               <div className="space-y-2">
                 <Label>CTA Link (optional)</Label>
                 <Input 

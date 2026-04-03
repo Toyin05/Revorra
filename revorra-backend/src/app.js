@@ -31,18 +31,23 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
+// CORS configuration
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.ADMIN_URL,
   'https://revorra.org',
   'https://www.revorra.org',
   'https://admin.revorra.org',
   'https://revorra.vercel.app',
   'https://revorra-admin.vercel.app',
+  'http://localhost:8080',
+  'http://localhost:8081',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_URL,
 ].filter(Boolean);
 
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin: function(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -51,11 +56,11 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // Rate limiting - General
 const generalLimiter = rateLimit({
@@ -67,7 +72,7 @@ const generalLimiter = rateLimit({
 // Rate limiting - Auth routes (stricter)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50,
+  max: 100,
   message: { success: false, message: 'Too many login attempts. Please try again later.' }
 });
 
@@ -81,6 +86,7 @@ const vtuLimiter = rateLimit({
 app.use(generalLimiter);
 app.use('/api/auth', authLimiter);
 app.use('/api/vtu', vtuLimiter);
+
 
 
 // Body parsing middleware

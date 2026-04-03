@@ -42,7 +42,7 @@ export default function HistoryPage() {
           </div>
           {transactions.map((t) => (
             <div key={t.id || t._id} className="grid grid-cols-4 gap-2 px-4 py-3 border-b last:border-0 text-sm">
-              <span className="text-xs text-muted-foreground">{new Date(t.createdAt || t.created_at || Date.now()).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="text-xs text-muted-foreground">{new Date(t.createdAt || t.created_at || Date.now()).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
               <span className="text-xs font-medium truncate">{t.type}</span>
               <span className={`text-xs font-bold ${t.amount >= 0 ? "text-primary" : "text-red-500"}`}>
                 {t.amount >= 0 ? "+" : ""}€{(Math.abs(t.amount) ?? 0).toFixed(2)}

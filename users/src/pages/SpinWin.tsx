@@ -19,7 +19,7 @@ const SEGMENTS = [
 const SEGMENT_DEGREES = 360 / SEGMENTS.length; // 51.43...
 
 export default function SpinWinPage() {
-  const { user, wallet, updateWallet } = useAuth();
+  const { user, wallet, updateWallet, refreshWallet } = useAuth();
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [currentRotation, setCurrentRotation] = useState(0);
@@ -121,7 +121,10 @@ export default function SpinWinPage() {
         setResult(reward);
         
         // Update wallet balance from backend response
-        updateWallet({ onehubBalance: newBalance });
+        const updatedWallet = res.data.data.wallet;
+        if (updatedWallet) {
+          refreshWallet(updatedWallet);
+        }
         
         if (reward > 0) {
           toast.success(`You won €${reward.toFixed(2)}! 🎉`);

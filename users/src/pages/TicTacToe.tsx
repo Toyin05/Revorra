@@ -53,7 +53,7 @@ function aiMove(b: Cell[]): number {
 }
 
 export default function TicTacToePage() {
-  const { user, wallet, updateUser, updateWallet } = useAuth();
+  const { user, wallet, updateUser, updateWallet, refreshWallet } = useAuth();
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [gameOver, setGameOver] = useState(false);
   const [result, setResult] = useState<string>("");
@@ -116,9 +116,11 @@ export default function TicTacToePage() {
         if (res.data.success) {
           const reward = res.data.data?.reward || 0;
           const newRemainingPlays = res.data.data?.remainingPlays;
-          const newBalance = res.data.data?.oneHubBalance || 0;
+          const updatedWallet = res.data.data.wallet;
           setRemainingPlays(newRemainingPlays);
-          updateWallet({ onehubBalance: newBalance });
+          if (updatedWallet) {
+            refreshWallet(updatedWallet);
+          }
           setBoard(nb); 
           setGameOver(true); 
           setResult(`You win! +€${reward.toFixed(2)}`);

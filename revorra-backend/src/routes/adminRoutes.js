@@ -167,10 +167,9 @@ router.post('/coupons', authenticateToken, requireAdmin, async (req, res) => {
       const coupon = await prisma.coupon.create({
         data: {
           code,
-          type: couponType,  // Use 'type' for Prisma model
-          userId: userId,
-          generatedFor: email ? email.trim() : null,
-        },
+          generatedFor: email ? email.trim() : 'General',
+          type: couponType
+        }
       });
       coupons.push(coupon);
     }
@@ -1152,17 +1151,25 @@ router.get('/announcements', authenticateToken, requireAdmin, async (req, res) =
 // GET /api/admin/settings - Get all platform settings
 router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const settings = await prisma.platformSetting.findMany();
-    
+    const [settings, tokenSetting] = await Promise.all([
+      prisma.platformSetting.findMany(),
+      prisma.platformSetting.findUnique({
+        where: { key: 'TOPUPWIZARD_TOKEN' }
+      })
+    ]);
+
     // Convert to key-value object
     const settingsObj = {};
     settings.forEach(s => {
       settingsObj[s.key] = s.value;
     });
-    
+
     return res.status(200).json({
       success: true,
-      data: settingsObj
+      data: {
+        ...settingsObj,
+        topupwizardToken: tokenSetting?.value || ''
+      }
     });
   } catch (error) {
     console.error('Get settings error:', error);
@@ -1186,11 +1193,26 @@ router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
     }
     
     // Update each setting
-    const updatePromises = Object.entries(settings).map(([key, value]) => {
+    const updatePromises = Object.entries(settings).map(async ([key, value]) => {
+      const normalizedKey = key === 'topupwizardToken'
+        ? 'TOPUPWIZARD_TOKEN'
+        : key.toUpperCase();
+
+      // Special handling for topupwizard token - clean up all variants
+      if (normalizedKey === 'TOPUPWIZARD_TOKEN') {
+        await prisma.platformSetting.deleteMany({
+          where: {
+            key: {
+              in: ['topupwizardToken', 'TOPUPWIZARDTOKEN', 'topupwizard_token']
+            }
+          }
+        });
+      }
+
       return prisma.platformSetting.upsert({
-        where: { key },
+        where: { key: normalizedKey },
         update: { value },
-        create: { key, value }
+        create: { key: normalizedKey, value }
       });
     });
     
@@ -1213,20 +1235,20 @@ router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
 router.post('/settings/token', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { token } = req.body;
-    
+
     if (!token) {
       return res.status(400).json({
         success: false,
         message: 'Token is required.'
       });
     }
-    
+
     await prisma.platformSetting.upsert({
       where: { key: 'TOPUPWIZARD_TOKEN' },
       update: { value: token },
       create: { key: 'TOPUPWIZARD_TOKEN', value: token }
     });
-    
+
     return res.status(200).json({
       success: true,
       message: 'TopupWizard token updated successfully.'
@@ -1288,24 +1310,27 @@ router.get('/coupon-link', authenticateToken, requireAdmin, async (req, res) => 
   }
 });
 
-// POST /api/admin/coupon-link - Update coupon request redirect link
 router.post('/coupon-link', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    let linkValue = req.body.link || req.body.value || '';
+    const { link } = req.body;
+    if (!link) return res.status(400).json({ success: false, message: 'Link is required' });
 
-    // Normalize the link — add https:// if missing
-    if (linkValue && !linkValue.startsWith('http://') && !linkValue.startsWith('https://')) {
-      linkValue = 'https://' + linkValue;
-    }
+    // Accept any link format - don't validate URL strictly
+    const cleanLink = link.trim();
 
     await prisma.platformSetting.upsert({
       where: { key: 'COUPON_REQUEST_LINK' },
-      update: { value: linkValue },
-      create: { key: 'COUPON_REQUEST_LINK', value: linkValue, description: 'WhatsApp/Telegram link for coupon requests' }
+      update: { value: cleanLink },
+      create: { 
+        key: 'COUPON_REQUEST_LINK', 
+        value: cleanLink, 
+        description: 'WhatsApp/Telegram link for coupon requests' 
+      }
     });
 
     return res.status(200).json({ success: true, message: 'Coupon link updated successfully' });
   } catch (error) {
+    console.error('Coupon link update error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 });

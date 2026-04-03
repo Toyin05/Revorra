@@ -29,6 +29,17 @@ export default function DashboardPage() {
     // Use wallet from context if available
     if (walletFromContext) {
       setWallet(walletFromContext as any);
+    } else {
+      // Load wallet from API if not in context
+      const loadWallet = async () => {
+        try {
+          const walletRes = await getWallet();
+          setWallet(walletRes.data.data);
+        } catch (err) {
+          console.error("Failed to load wallet:", err);
+        }
+      };
+      loadWallet();
     }
   }, [walletFromContext]);
 
@@ -39,12 +50,6 @@ export default function DashboardPage() {
           getTasks(),
           getTransactions()
         ]);
-        try {
-          const walletRes = await getWallet();
-          if (walletRes.data.data) {
-            setWallet(walletRes.data.data);
-          }
-        } catch {}
         setTasks(tasksRes.data.data);
         setTransactions(transactionsRes.data.data);
       } catch (err) {

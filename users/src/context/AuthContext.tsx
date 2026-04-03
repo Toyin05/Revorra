@@ -10,6 +10,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   updateWallet: (updates: { referralBalance?: number; taskBalance?: number; onehubBalance?: number }) => void;
+  refreshWallet: () => Promise<void>;
   loading: boolean;
 }
 
@@ -92,14 +93,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateWallet = useCallback((updates: { referralBalance?: number; taskBalance?: number; onehubBalance?: number }) => {
-    setWallet(prev => {
-      if (!prev) return prev;
-      return { ...prev, ...updates };
-    });
+    setWallet(prev => ({ ...(prev || {}), ...updates }));
+  }, []);
+
+  const refreshWallet = useCallback((newWallet) => {
+    if (newWallet) {
+      setWallet(newWallet);
+    }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, wallet, login, register, logout, updateUser, updateWallet, loading }}>
+    <AuthContext.Provider value={{ user, wallet, login, register, logout, updateUser, updateWallet, refreshWallet, loading }}>
       {children}
     </AuthContext.Provider>
   );

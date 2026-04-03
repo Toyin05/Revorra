@@ -12,12 +12,11 @@ import { useState, useEffect } from "react";
 const menuItems = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/admin/users", icon: Users, label: "Users" },
-  { to: "/admin/tasks", icon: ListTodo, label: "Tasks", needsBadge: true },
+  { to: "/admin/tasks", icon: ListTodo, label: "Tasks" },
   { to: "/admin/sponsored", icon: Share2, label: "Sponsored Posts" },
   { to: "/admin/games", icon: Gamepad2, label: "Games Control" },
   { to: "/admin/withdrawals", icon: Wallet, label: "Withdrawals", needsBadge: true },
   { to: "/admin/coupons", icon: Ticket, label: "Coupons" },
-  { to: "/admin/notifications", icon: Bell, label: "Notifications" },
   { to: "/admin/announcements", icon: Megaphone, label: "Announcements" },
   { to: "/admin/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/admin/settings", icon: Settings, label: "Settings" },

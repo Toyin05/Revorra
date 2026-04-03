@@ -13,7 +13,6 @@ const menuItems = [
   { to: "/admin/games", icon: Gamepad2, label: "Games Control" },
   { to: "/admin/withdrawals", icon: Wallet, label: "Withdrawals" },
   { to: "/admin/coupons", icon: Ticket, label: "Coupons" },
-  { to: "/admin/notifications", icon: Bell, label: "Notifications" },
   { to: "/admin/announcements", icon: Megaphone, label: "Announcements" },
   { to: "/admin/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/admin/settings", icon: Settings, label: "Settings" },

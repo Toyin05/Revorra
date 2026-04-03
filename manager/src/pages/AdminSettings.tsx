@@ -46,12 +46,19 @@ export default function AdminSettings() {
     setRefreshingBalance(true);
     try {
       const res = await getTWBalance();
-      // Response is nested: res.data.data.data.funds
-      const funds = res.data?.data?.data?.funds || res.data?.data?.funds || '0';
-      setTwBalance(`₦${funds}`);
+      // Handle nested response
+      const funds = res.data?.data?.data?.funds
+        ?? res.data?.data?.funds
+        ?? res.data?.funds
+        ?? null;
+
+      if (funds !== null) {
+        setTwBalance(`₦${Number(funds).toLocaleString()}`);
+      } else {
+        setTwBalance('Unable to fetch — check token');
+      }
     } catch (error) {
-      console.error("Failed to fetch TW balance:", error);
-      setTwBalance("Failed to fetch — check your token");
+      setTwBalance('Failed — verify your token is correct');
     } finally {
       setRefreshingBalance(false);
     }
@@ -65,7 +72,8 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       await updateSettings({ topupwizardToken: newToken });
-      toast({ title: "Token saved successfully" });
+      setTwBalance(''); // clear old balance after saving new token
+      toast({ title: "Token saved! Click Refresh Balance to verify." });
       setNewToken("");
       loadSettings();
     } catch (error) {
@@ -162,32 +170,28 @@ export default function AdminSettings() {
             </div>
 
             <div className="pt-4 border-t">
-              <Label className="text-muted-foreground">TopupWizard Wallet Balance</Label>
-              {getMaskedToken(tokenDisplay) === 'No token set' ? (
-                <p className="mt-2 text-sm" style={{ color: '#9ca3af' }}>
-                  No token configured. Enter your token above to check balance.
-                </p>
-              ) : (
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-2xl font-bold">
-                    {twBalance !== null ? twBalance : 'Click refresh to check'}
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleRefreshBalance}
-                    disabled={refreshingBalance}
-                    className="cursor-pointer"
-                  >
-                    {refreshingBalance ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                    )}
-                    Refresh Balance
-                  </Button>
-                </div>
-              )}
+              <Label className="text-muted-foreground">
+                TopupWizard Wallet Balance
+              </Label>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-2xl font-bold">
+                  {twBalance !== null ? twBalance : 'Click refresh to check'}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshBalance}
+                  disabled={refreshingBalance}
+                  className="cursor-pointer"
+                >
+                  {refreshingBalance ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                  )}
+                  Refresh Balance
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -4,13 +4,19 @@ import prisma from '../config/prisma.js';
 const BASE_URL = process.env.TOPUPWIZARD_BASE_URL || 'https://topupwizard.com/api';
 
 // Dynamic config fetchers - read from database, fallback to env
-const getToken = async () => {
+const getTopupWizardToken = async () => {
   try {
     const setting = await prisma.platformSetting.findUnique({
       where: { key: 'TOPUPWIZARD_TOKEN' }
     });
-    return setting?.value || process.env.TOPUPWIZARD_TOKEN;
-  } catch {
+    console.log('[VTU Token] DB setting found:', setting);
+    console.log('[VTU Token] DB value:', setting?.value);
+    console.log('[VTU Token] ENV value:', process.env.TOPUPWIZARD_TOKEN);
+    const token = setting?.value || process.env.TOPUPWIZARD_TOKEN;
+    console.log('[VTU Token] Using token:', token);
+    return token;
+  } catch (error) {
+    console.error('[VTU Token] Error reading from DB:', error);
     return process.env.TOPUPWIZARD_TOKEN;
   }
 };
@@ -45,7 +51,7 @@ const AIRTIME_SERVICE_IDS = {
 
 // Get headers with dynamic token
 const getHeaders = async () => {
-  const token = await getToken();
+  const token = await getTopupWizardToken();
   return {
     'Content-Type': 'application/json',
     'Authorization-Token': token
