@@ -136,54 +136,65 @@ router.post('/withdrawals/:id/paid', authenticateToken, requireAdmin, async (req
   }
 });
 
-// POST /api/admin/coupons - Generate coupons
 router.post('/coupons', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { walletType, count = 1, email } = req.body;
+    const { username } = req.body;
 
-    // Use 'type' for Prisma model, but accept walletType from request
-    const couponType = walletType || 'TASK';
-    if (!['REFERRAL', 'TASK', 'ONEHUB'].includes(couponType)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid wallet type. Must be REFERRAL, TASK, or ONEHUB.',
-      });
+    // Generate unique code
+    const generateCode = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const segment = () => Array.from({length: 4}, () =>
+        chars[Math.floor(Math.random() * chars.length)]).join('');
+      return `RVRA-${segment()}-${segment()}-${segment()}`;
+    };
+
+    let code;
+    let exists = true;
+    while (exists) {
+      code = generateCode();
+      const existing = await prisma.coupon.findFirst({ where: { code } });
+      exists = !!existing;
     }
 
-    // If email is provided, find the user
+    // Find user if username provided
+    let generatedFor = 'General';
     let userId = null;
-    if (email) {
-      const user = await prisma.user.findUnique({
-        where: { email: email.trim() }
+    if (username && username.trim() !== '') {
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: username.trim() },
+            { email: username.trim() },
+            { id: username.trim() }
+          ]
+        }
       });
       if (user) {
+        generatedFor = user.username;
         userId = user.id;
+      } else {
+        generatedFor = username.trim();
       }
     }
 
-    const coupons = [];
-    for (let i = 0; i < count; i++) {
-      const code = generateCouponCode();
-      const coupon = await prisma.coupon.create({
-        data: {
-          code,
-          generatedFor: email ? email.trim() : 'General',
-          type: couponType
-        }
-      });
-      coupons.push(coupon);
-    }
+    const coupon = await prisma.coupon.create({
+      data: {
+        code,
+        generatedFor,
+        userId,
+        type: 'TASK', // default type - one coupon works for all wallets
+        isUsed: false,
+      }
+    });
 
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
-      data: coupons,
+      data: coupon,
+      message: `Coupon code ${code} generated successfully`
     });
   } catch (error) {
-    console.error('Create coupons error:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to create coupons.',
-    });
+    console.error('Generate coupon error:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -357,36 +368,15 @@ router.patch('/coupons/:id/reject', authenticateToken, requireAdmin, async (req,
   }
 });
 
-// GET /api/admin/coupons - Get all coupons
 router.get('/coupons', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { walletType, isUsed } = req.query;
-
-    const where = {};
-    if (walletType) where.type = walletType;  // Use 'type' instead of 'walletType'
-    if (isUsed !== undefined) where.isUsed = isUsed === 'true';
-
     const coupons = await prisma.coupon.findMany({
-      where,
       orderBy: { createdAt: 'desc' },
+      take: 100
     });
-
-    // Map to include generatedFor as generated_for for frontend
-    const formattedCoupons = coupons.map(c => ({
-      ...c,
-      generated_for: c.generatedFor
-    }));
-
-    return res.status(200).json({
-      success: true,
-      data: formattedCoupons,
-    });
+    return res.status(200).json({ success: true, data: coupons });
   } catch (error) {
-    console.error('Get coupons error:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to get coupons.',
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
