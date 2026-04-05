@@ -646,25 +646,19 @@ router.put('/tasks/:id', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/admin/tasks/:id - Delete task
 router.delete('/tasks/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    await prisma.task.delete({
-      where: { id },
-    });
+    // Delete completions first to avoid FK constraint
+    await prisma.taskCompletion.deleteMany({ where: { taskId: id } });
 
-    return res.status(200).json({
-      success: true,
-      message: 'Task deleted successfully.',
-    });
+    // Then delete the task
+    await prisma.task.delete({ where: { id } });
+
+    return res.status(200).json({ success: true, message: 'Task deleted successfully' });
   } catch (error) {
-    console.error('Delete task error:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to delete task.',
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 

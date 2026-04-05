@@ -233,35 +233,60 @@ export default function AdminCouponsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Code</TableHead>
-                  <TableHead>User Email</TableHead>
+                  <TableHead>Generated For</TableHead>
                   <TableHead>Date & Time</TableHead>
-                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {coupons.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                       No coupons generated yet.
                     </TableCell>
                   </TableRow>
                 )}
                 {coupons.map((c: any) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-mono font-medium text-lg">{c.code}</TableCell>
-                    <TableCell>{c.generated_for || "-"}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDateTime(c.created_at || c.createdAt)}
+                    <TableCell>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <code style={{
+                          background: '#f3f4f6',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          letterSpacing: '1px'
+                        }}>
+                          {c.code}
+                        </code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(c.code);
+                            toast.success('Code copied!');
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            color: '#6366f1'
+                          }}
+                          title="Copy code"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="cursor-pointer" 
-                        onClick={() => copyToClipboard(c.code)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                      <span style={{ fontSize: '13px', color: '#374151' }}>
+                        {c.generatedFor || c.user?.email || c.user?.username || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(c.created_at || c.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
