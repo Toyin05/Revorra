@@ -23,6 +23,8 @@ import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Hide Express signature
 app.disable('x-powered-by');
 
