@@ -180,9 +180,9 @@ router.post('/coupons', authenticateToken, requireAdmin, async (req, res) => {
     const coupon = await prisma.coupon.create({
       data: {
         code,
-        generatedFor,
-        userId,
-        type: 'TASK', // default type - one coupon works for all wallets
+        generatedFor: generatedFor || 'General',
+        userId: userId || null,
+        type: 'TASK',
         isUsed: false,
       }
     });
