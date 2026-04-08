@@ -147,4 +147,24 @@ router.post('/auth/verify-email', (req, res) => {
   });
 });
 
+// Temporary one-time password reset endpoint
+router.post('/reset-admin-password', async (req, res) => {
+  try {
+    const bcrypt = await import('bcrypt');
+    const newHash = await bcrypt.hash('admin123', 10);
+
+    await prisma.user.update({
+      where: { email: 'admin@revorra.com' },
+      data: { passwordHash: newHash }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;
