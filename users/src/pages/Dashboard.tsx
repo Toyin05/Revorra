@@ -102,7 +102,6 @@ export default function DashboardPage() {
         <BalanceCard label="Referral" amount={balances.referralBalance ?? 0} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
         <BalanceCard label="Tasks" amount={balances.taskBalance ?? 0} icon={<ListTodo className="h-4 w-4 text-muted-foreground" />} />
         <BalanceCard label="OneHub" amount={balances.onehubBalance ?? 0} variant="dark" icon={<Gamepad2 className="h-4 w-4 text-primary-foreground" />} />
-        <BalanceCard label="Welcome Bonus" amount={balances.bonusBalance ?? 0} icon={<Gift className="h-4 w-4 text-muted-foreground" />} />
       </div>
 
       {/* Quick Actions */}

@@ -110,10 +110,10 @@ export default function VTUPage() {
     const fetchBalance = async () => {
       try {
         const res = await getWallet();
-        setBalance(res.data.data?.onehubBalance || walletFromContext?.onehubBalance || 0);
+        setBalance(res.data.data?.referralBalance || walletFromContext?.referralBalance || 0);
       } catch (err) {
         console.error("Failed to fetch wallet:", err);
-        setBalance(walletFromContext?.onehubBalance || 0);
+        setBalance(walletFromContext?.referralBalance || 0);
       }
     };
     fetchBalance();
@@ -183,7 +183,13 @@ export default function VTUPage() {
         
         // Convert to euros: eurAmount = ngnAmount / 1600
         const euroAmount = nairaAmount / 1600;
-        
+
+        if (balance < euroAmount) {
+          toast.error("Insufficient Referral balance");
+          setLoading(false);
+          return;
+        }
+
         response = await purchaseAirtime({
           network: network.toUpperCase(),
           phoneNumber: phone,
@@ -194,7 +200,15 @@ export default function VTUPage() {
       } else {
         // Data
         if (!selectedPlan) { toast.error("Please select a data plan"); setLoading(false); return; }
-        
+
+        const euroAmount = parseInt(selectedPlan.amount) / 1600;
+
+        if (balance < euroAmount) {
+          toast.error("Insufficient Referral balance");
+          setLoading(false);
+          return;
+        }
+
         response = await purchaseData({
           network: network.toUpperCase(),
           phoneNumber: phone,
@@ -208,7 +222,7 @@ export default function VTUPage() {
       
       // Refresh balance
       const res = await getWallet();
-      setBalance(res.data.data?.onehubBalance || 0);
+      setBalance(res.data.data?.referralBalance || 0);
       
       // Refresh history
       const histRes = await getVTUHistory();
@@ -261,7 +275,7 @@ export default function VTUPage() {
       {/* OneHub Balance */}
       <div className="bg-card border rounded-2xl p-4 mb-6 shadow-card">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">OneHub Balance</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Referral Balance</span>
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg>
           </div>

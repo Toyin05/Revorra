@@ -55,3 +55,35 @@ process.on('SIGINT', async () => {
 });
 
 startServer();
+
+// Auto-delete tasks after 24 hours
+const cleanupExpiredTasks = async () => {
+  try {
+    const { default: prisma } = await import('./config/prisma.js');
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // First delete completions for old tasks
+    const oldTasks = await prisma.task.findMany({
+      where: { createdAt: { lt: twentyFourHoursAgo } },
+      select: { id: true }
+    });
+
+    if (oldTasks.length > 0) {
+      const oldTaskIds = oldTasks.map(t => t.id);
+      await prisma.taskCompletion.deleteMany({
+        where: { taskId: { in: oldTaskIds } }
+      });
+      await prisma.task.deleteMany({
+        where: { id: { in: oldTaskIds } }
+      });
+      console.log(`Cleaned up ${oldTasks.length} expired tasks`);
+    }
+  } catch (error) {
+    console.error('Task cleanup error:', error);
+  }
+};
+
+// Run cleanup every hour
+setInterval(cleanupExpiredTasks, 60 * 60 * 1000);
+// Also run on startup
+cleanupExpiredTasks();

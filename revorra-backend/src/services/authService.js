@@ -38,8 +38,8 @@ export const registerUser = async (userData) => {
         userId: user.id,
         referralBalance: 0,
         taskBalance: 0,
-        onehubBalance: 0,
-        bonusBalance: welcomeBonus, // Credit welcome bonus
+        onehubBalance: welcomeBonus, // Credit welcome bonus to OneHub
+        bonusBalance: 0,
         lockedReferralBalance: 0,
         lockedTaskBalance: 0,
         lockedOnehubBalance: 0,
@@ -78,6 +78,7 @@ export const registerUser = async (userData) => {
     await tx.transaction.create({
       data: {
         userId: user.id,
+        walletType: 'ONEHUB',
         type: 'WELCOME_BONUS',
         amount: welcomeBonus,
         reference: `WELCOME-${user.id}`,

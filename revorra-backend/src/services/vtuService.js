@@ -9,11 +9,7 @@ const getTopupWizardToken = async () => {
     const setting = await prisma.platformSetting.findUnique({
       where: { key: 'TOPUPWIZARD_TOKEN' }
     });
-    console.log('[VTU Token] DB setting found:', setting);
-    console.log('[VTU Token] DB value:', setting?.value);
-    console.log('[VTU Token] ENV value:', process.env.TOPUPWIZARD_TOKEN);
     const token = setting?.value || process.env.TOPUPWIZARD_TOKEN;
-    console.log('[VTU Token] Using token:', token);
     return token;
   } catch (error) {
     console.error('[VTU Token] Error reading from DB:', error);

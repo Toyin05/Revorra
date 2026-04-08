@@ -113,19 +113,28 @@ export default function AdminUsersPage() {
               Top Referrers
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {topReferrers.slice(0, 5).map((ref: any, index: number) => (
-                <div 
-                  key={ref.id || index} 
-                  className="flex-shrink-0 bg-muted rounded-lg p-3 text-center min-w-[120px]"
-                >
-                  <div className="text-lg font-bold text-amber-500">#{index + 1}</div>
-                  <div className="font-medium text-sm">{ref.full_name || ref.username}</div>
-                  <div className="text-xs text-muted-foreground">{ref.referrals_count || ref.referrals} refs</div>
-                </div>
-              ))}
-            </div>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rank</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Referrals</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(() => {
+                  const filtered = topReferrers.filter(r => r.referralCount > 0);
+                  return filtered.slice(0, 5).map((ref: any, index: number) => (
+                    <TableRow key={ref.id || index}>
+                      <TableCell className="font-medium">#{index + 1}</TableCell>
+                      <TableCell>{ref.full_name || ref.username}</TableCell>
+                      <TableCell className="text-muted-foreground">{ref.referralCount} refs</TableCell>
+                    </TableRow>
+                  ));
+                })()}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

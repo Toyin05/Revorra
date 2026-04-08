@@ -380,55 +380,49 @@ router.get('/coupons', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/admin/users - Get all users (admin)
 router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        phone: true,
-        role: true,
-        isVerified: true,
-        isSuspended: true,
-        createdAt: true,
-        wallet: {
-          select: {
-            referralBalance: true,
-            taskBalance: true,
-            onehubBalance: true
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    // Protected accounts that should never appear in the users table
+    const PROTECTED_EMAILS = [
+      'admin@revorra.com',
+      'revorralimited@gmail.com',
+      'revorralimited1@gmail.com'
+    ];
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          email: {
+            notIn: PROTECTED_EMAILS
+          }
+        },
+        include: {
+          wallet: true
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip
+      }),
+      prisma.user.count({
+        where: {
+          email: {
+            notIn: PROTECTED_EMAILS
           }
         }
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Format response to flatten wallet fields
-    const formattedUsers = users.map(user => ({
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      phone: user.phone,
-      role: user.role,
-      isVerified: user.isVerified,
-      isSuspended: user.isSuspended,
-      createdAt: user.createdAt,
-      referral_balance: user.wallet?.referralBalance || 0,
-      task_balance: user.wallet?.taskBalance || 0,
-      onehub_balance: user.wallet?.onehubBalance || 0
-    }));
+      })
+    ]);
 
     return res.status(200).json({
       success: true,
-      data: formattedUsers,
+      data: users,
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
     });
   } catch (error) {
-    console.error('Get users error:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to get users.',
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -479,6 +473,20 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    // Protect these accounts from deletion
+    const PROTECTED_EMAILS = [
+      'admin@revorra.com',
+      'revorralimited@gmail.com',
+      'revorralimited1@gmail.com'
+    ];
+
+    if (PROTECTED_EMAILS.includes(user.email)) {
+      return res.status(403).json({
+        success: false,
+        message: 'This account is protected and cannot be deleted.'
+      });
+    }
+
     // Delete in correct order to avoid foreign key errors
     await prisma.userActivity.deleteMany({ where: { userId: id } });
     await prisma.device.deleteMany({ where: { userId: id } });
@@ -508,6 +516,19 @@ router.patch('/users/:id/suspend', authenticateToken, requireAdmin, async (req, 
     const { id } = req.params;
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const PROTECTED_EMAILS = [
+      'admin@revorra.com',
+      'revorralimited@gmail.com',
+      'revorralimited1@gmail.com'
+    ];
+
+    if (PROTECTED_EMAILS.includes(user.email)) {
+      return res.status(403).json({
+        success: false,
+        message: 'This account is protected and cannot be suspended.'
+      });
+    }
 
     const updated = await prisma.user.update({
       where: { id },

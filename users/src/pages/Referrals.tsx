@@ -50,11 +50,7 @@ export default function ReferralsPage() {
     fetchReferrals();
   }, []);
 
-  const getStatus = (referredUser: ReferredUser['referredUser']) => {
-    const tasksCompleted = referredUser.taskCompletions?.length || 0;
-    if (tasksCompleted > 0) return { label: 'Active', class: 'bg-green-100 text-green-700' };
-    return { label: 'Pending', class: 'bg-yellow-100 text-yellow-700' };
-  };
+
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('en-GB', {
@@ -124,30 +120,17 @@ export default function ReferralsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {referrals.map((ref) => {
-              const status = getStatus(ref.referredUser);
-              return (
-                <div key={ref.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                      {ref.referredUser.username?.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">@{ref.referredUser.username}</p>
-                      <p className="text-xs text-muted-foreground">Joined: {formatDate(ref.referredUser.createdAt)}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${status.class}`}>
-                      {status.label}
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Tasks: {ref.referredUser.taskCompletions?.length || 0}
-                    </p>
-                  </div>
+            {referrals.map((ref) => (
+              <div key={ref.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                  {ref.referredUser.username?.charAt(0).toUpperCase()}
                 </div>
-              );
-            })}
+                <div>
+                  <p className="text-sm font-medium">@{ref.referredUser.username}</p>
+                  <p className="text-xs text-muted-foreground">Joined: {formatDate(ref.referredUser.createdAt)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

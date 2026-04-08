@@ -219,13 +219,10 @@ export const getUserAnalytics = async (req, res) => {
 export const getTopReferrers = async (req, res) => {
   try {
     const topReferrers = await prisma.user.findMany({
-      where: {
-        referrals: {
-          some: {}
-        }
-      },
       select: {
+        id: true,
         username: true,
+        email: true,
         _count: {
           select: {
             referrals: true
@@ -240,20 +237,22 @@ export const getTopReferrers = async (req, res) => {
       take: 10
     });
 
-    const formattedData = topReferrers.map(user => ({
-      username: user.username,
-      referralCount: user._count.referrals
+    const formatted = topReferrers.map((u, index) => ({
+      rank: index + 1,
+      username: u.username,
+      email: u.email,
+      referralCount: u._count.referrals
     }));
 
     return res.status(200).json({
       success: true,
-      data: formattedData
+      data: formatted
     });
   } catch (error) {
     console.error('Get top referrers error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to get top referrers'
+      message: error.message
     });
   }
 };

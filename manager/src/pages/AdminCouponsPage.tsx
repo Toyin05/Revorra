@@ -280,11 +280,11 @@ export default function AdminCouponsPage() {
                         </button>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <span style={{ fontSize: '13px', color: '#374151' }}>
-                        {c.generatedFor || c.user?.email || c.user?.username || '-'}
-                      </span>
-                    </TableCell>
+                     <TableCell>
+                       <span style={{ fontSize: '13px', color: '#374151' }}>
+                         {c.generated_for || c.user?.email || c.user?.username || '-'}
+                       </span>
+                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDateTime(c.created_at || c.createdAt)}
                     </TableCell>

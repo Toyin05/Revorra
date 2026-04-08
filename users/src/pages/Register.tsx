@@ -130,12 +130,12 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
 
-    const ok = await register(form);
-    if (ok) {
+    const result = await register(form);
+    if (result.success) {
       toast.success("Welcome to Revorra! You earned a €1.50 bonus! 🎉");
       navigate("/dashboard");
     } else {
-      toast.error("Registration failed. Please check your details and try again.");
+      toast.error(result.message);
     }
     
     setIsSubmitting(false);

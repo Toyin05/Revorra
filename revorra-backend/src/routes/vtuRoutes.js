@@ -70,12 +70,12 @@ router.post('/airtime', authenticateToken, async (req, res) => {
       });
     }
 
-    // Check user OneHub wallet balance
+    // Check user referral wallet balance
     const wallet = await prisma.wallet.findUnique({ where: { userId } });
-    if (!wallet || wallet.onehubBalance < amountEUR) {
+    if (!wallet || wallet.referralBalance < amountEUR) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient OneHub balance. You need €${amountEUR} but have €${wallet?.onehubBalance || 0}`
+        message: `Insufficient Referral balance. You need €${amountEUR} but have €${wallet?.referralBalance || 0}`
       });
     }
 
@@ -93,13 +93,13 @@ router.post('/airtime', authenticateToken, async (req, res) => {
     if (isSuccess) {
       await prisma.wallet.update({
         where: { userId },
-        data: { onehubBalance: { decrement: amountEUR } }
+        data: { referralBalance: { decrement: amountEUR } }
       });
 
       await prisma.transaction.create({
         data: {
           userId,
-          walletType: 'ONEHUB',
+          walletType: 'REFERRAL',
           type: 'VTU_PURCHASE',
           amount: amountEUR,
           description: `${network.toUpperCase()} Airtime ₦${amountNGN} → ${phoneNumber}`,
@@ -161,10 +161,10 @@ router.post('/data', authenticateToken, async (req, res) => {
 
     // Check wallet balance
     const wallet = await prisma.wallet.findUnique({ where: { userId } });
-    if (!wallet || wallet.onehubBalance < amountEUR) {
+    if (!wallet || wallet.referralBalance < amountEUR) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient OneHub balance. You need €${amountEUR.toFixed(2)} but have €${wallet?.onehubBalance || 0}`
+        message: `Insufficient Referral balance. You need €${amountEUR.toFixed(2)} but have €${wallet?.referralBalance || 0}`
       });
     }
 
@@ -181,13 +181,13 @@ router.post('/data', authenticateToken, async (req, res) => {
     if (isSuccess) {
       await prisma.wallet.update({
         where: { userId },
-        data: { onehubBalance: { decrement: amountEUR } }
+        data: { referralBalance: { decrement: amountEUR } }
       });
 
       await prisma.transaction.create({
         data: {
           userId,
-          walletType: 'ONEHUB',
+          walletType: 'REFERRAL',
           type: 'VTU_PURCHASE',
           amount: amountEUR,
           description: `${network.toUpperCase()} Data ${planName || ''} → ${phoneNumber}`,
@@ -259,7 +259,7 @@ router.post('/webhook', async (req, res) => {
         if (status === 'failed' && transaction.status !== 'FAILED') {
           await prisma.wallet.update({
             where: { userId: transaction.userId },
-            data: { onehubBalance: { increment: transaction.amount } }
+            data: { referralBalance: { increment: transaction.amount } }
           });
 
           console.log(`Refunded €${transaction.amount} to user ${transaction.userId} for failed VTU transaction`);

@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   wallet: { referralBalance: number; taskBalance: number; onehubBalance: number } | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (data: { full_name: string; username: string; email: string; phone: string; password: string; referral_code?: string }) => Promise<boolean>;
+  register: (data: { full_name: string; username: string; email: string; phone: string; password: string; referral_code?: string }) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   updateWallet: (updates: { referralBalance?: number; taskBalance?: number; onehubBalance?: number }) => void;
@@ -62,20 +62,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: data.username,
         email: data.email,
         password: data.password,
+        phone: data.phone,
         referralCode: data.referral_code || undefined,
         fullName: data.full_name,
-        phone: data.phone,
       });
+
       const token = res.data.data.token;
-      const user = res.data.data.user;
-      const wallet = res.data.data.wallet;
-      localStorage.setItem("token", token);
-      setUser(user);
-      setWallet(wallet);
-      return true;
-    } catch (err) {
-      console.error("Registration failed:", err);
-      return false;
+      localStorage.setItem('token', token);
+      setUser(res.data.data.user);
+
+      // Fetch wallet immediately
+      try {
+        const walletRes = await getProfile();
+        setWallet(walletRes.data.data.wallet);
+      } catch {}
+
+      return { success: true };
+    } catch (err: any) {
+      // Pass the specific error message from backend
+      const message = err.response?.data?.message
+        || 'Registration failed. Please try again.';
+      return { success: false, message };
     }
   }, []);
 

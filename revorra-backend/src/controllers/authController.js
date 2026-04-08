@@ -2,82 +2,93 @@ import { registerUser, loginUser, getCurrentUser, getReferralStats } from '../se
 import prisma from '../config/prisma.js';
 import fraudService from '../services/fraudService.js';
 import activityService from '../services/activityService.js';
+import validator from 'validator';
 
-/**
- * Validate email format
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid
- */
-const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
 
-/**
- * Validate username format
- * @param {string} username - Username to validate
- * @returns {boolean} True if valid
- */
-const isValidUsername = (username) => {
-  // Username can contain letters, numbers, underscores and dots (3-30 chars)
-  const usernameRegex = /^[a-zA-Z0-9_\.]{3,30}$/;
-  return usernameRegex.test(username);
-};
 
 /**
  * Register a new user
  */
 export const register = async (req, res) => {
   try {
-    const { email, password, username, phone, referralCode, deviceFingerprint } = req.body;
+    const { email, username, password, phone, referralCode, deviceFingerprint } = req.body;
 
-    // 1. Validate input
-    if (!email || !password || !username) {
+    // Basic required field checks
+    if (!email || !username || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email, password, and username are required.',
+        message: 'Email, username and password are required.'
       });
     }
 
-    if (!isValidEmail(email)) {
+    // Check email format
+    if (!validator.isEmail(email)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid email format.',
+        message: 'That doesn\'t look like a valid email address. Please check and try again.'
       });
     }
 
-    if (!isValidUsername(username)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Username must be 3-30 characters and can only contain letters, numbers, underscores and dots.',
-      });
-    }
-
+    // Check password length
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters.',
+        message: 'Your password must be at least 6 characters long.'
       });
     }
 
-    // 2. Check if email or username already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username }],
-      },
-    });
+    // Check username format
+    if (!/^[a-zA-Z0-9_\.]{3,30}$/.test(username)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username must be 3-30 characters and can only contain letters, numbers, underscores and dots.'
+      });
+    }
 
-    if (existingUser) {
-      if (existingUser.email === email) {
+    // Check if email already exists
+    const existingEmail = await prisma.user.findFirst({
+      where: { email: email.toLowerCase().trim() }
+    });
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'That email address is already registered. Try logging in instead, or use a different email.'
+      });
+    }
+
+    // Check if username already exists
+    const existingUsername = await prisma.user.findFirst({
+      where: { username: username.trim() }
+    });
+    if (existingUsername) {
+      return res.status(400).json({
+        success: false,
+        message: `The username "${username}" is already taken. Please choose a different one.`
+      });
+    }
+
+    // Check if phone already exists (only if phone is provided)
+    if (phone && phone.trim() !== '') {
+      const existingPhone = await prisma.user.findFirst({
+        where: { phone: phone.trim() }
+      });
+      if (existingPhone) {
         return res.status(400).json({
           success: false,
-          message: 'Email already registered.',
+          message: 'That phone number is already linked to an account. Please use a different number or log in to your existing account.'
         });
       }
-      if (existingUser.username === username) {
+    }
+
+    // Check if referral code is valid (if provided)
+    if (referralCode && referralCode.trim() !== '') {
+      const referrer = await prisma.user.findFirst({
+        where: { username: referralCode.trim() }
+      });
+      if (!referrer) {
         return res.status(400).json({
           success: false,
-          message: 'Username already taken.',
+          message: 'The referral code you entered is invalid. Please check it and try again, or leave it empty to continue.'
         });
       }
     }
@@ -150,15 +161,138 @@ export const register = async (req, res) => {
       );
     }
 
+    // After user is created, handle referral
+    if (referralCode) {
+      try {
+        const referrer = await prisma.user.findFirst({
+          where: { username: referralCode.trim() }
+        });
+
+        if (referrer && referrer.id !== result.user.id) {
+
+          // Check if referral record already exists
+          const existingReferral = await prisma.referral.findUnique({
+            where: { referredUserId: result.user.id }
+          });
+
+          if (!existingReferral) {
+            await prisma.referral.create({
+              data: {
+                referrerId: referrer.id,
+                referredUserId: result.user.id,
+                reward: 0.50,
+                status: 'REWARDED'
+              }
+            });
+          }
+
+          // Always credit the wallet regardless of whether
+          // referral record existed
+          await prisma.wallet.update({
+            where: { userId: referrer.id },
+            data: { referralBalance: { increment: 0.50 } }
+          });
+
+          await prisma.transaction.create({
+            data: {
+              userId: referrer.id,
+              walletType: 'REFERRAL',
+              type: 'REFERRAL_REWARD',
+              amount: 0.50,
+              description: `Referral reward: ${result.user.username} joined using your link`,
+              status: 'COMPLETED'
+            }
+          });
+
+          // Credit new user €0.20 to referral balance
+          await prisma.wallet.update({
+            where: { userId: result.user.id },
+            data: { referralBalance: { increment: 0.20 } }
+          });
+
+          await prisma.transaction.create({
+            data: {
+              userId: result.user.id,
+              walletType: 'REFERRAL',
+              type: 'INDIRECT_REFERRAL',
+              amount: 0.20,
+              description: 'Referral signup bonus',
+              status: 'COMPLETED'
+            }
+          });
+
+          // Check referrer's referrer (second level - indirect)
+          const referrerReferral = await prisma.referral.findFirst({
+            where: { referredUserId: referrer.id }
+          });
+
+          if (referrerReferral) {
+            const indirectReferrer = await prisma.user.findUnique({
+              where: { id: referrerReferral.referrerId }
+            });
+
+            if (indirectReferrer) {
+              await prisma.wallet.update({
+                where: { userId: indirectReferrer.id },
+                data: { referralBalance: { increment: 0.20 } }
+              });
+
+              await prisma.transaction.create({
+                data: {
+                  userId: indirectReferrer.id,
+                  walletType: 'REFERRAL',
+                  type: 'INDIRECT_REFERRAL',
+                  amount: 0.20,
+                  description: `Indirect referral: ${result.user.username} joined via ${referrer.username}`,
+                  status: 'COMPLETED'
+                }
+              });
+            }
+          }
+        }
+      } catch (referralError) {
+        console.error('Referral processing error:', referralError);
+        // Don't fail registration if referral processing fails
+      }
+    }
+
     return res.status(201).json({
       success: true,
       data: result,
     });
   } catch (error) {
     console.error('Registration error:', error);
+
+    // Handle Prisma unique constraint violations
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0];
+      if (field === 'email') {
+        return res.status(400).json({
+          success: false,
+          message: 'That email address is already registered. Try logging in instead.'
+        });
+      }
+      if (field === 'username') {
+        return res.status(400).json({
+          success: false,
+          message: 'That username is already taken. Please choose a different one.'
+        });
+      }
+      if (field === 'phone') {
+        return res.status(400).json({
+          success: false,
+          message: 'That phone number is already linked to an account.'
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'An account with those details already exists. Please check your information.'
+      });
+    }
+
     return res.status(500).json({
       success: false,
-      message: error.message || 'Registration failed.',
+      message: 'Something went wrong. Please try again in a moment.'
     });
   }
 };
