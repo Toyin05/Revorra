@@ -153,10 +153,124 @@ router.post('/reset-admin-password', async (req, res) => {
     const bcrypt = await import('bcrypt');
     const newHash = await bcrypt.hash('admin123', 10);
 
-    await prisma.user.update({
-      where: { email: 'admin@revorra.com' },
-      data: { passwordHash: newHash }
+    // Try to find existing account first
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: 'admin@revorra.com' },
+          { username: 'RevorraAdmin' }
+        ]
+      }
     });
+
+    if (existing) {
+      // Update password if exists
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { passwordHash: newHash }
+      });
+      return res.status(200).json({
+        success: true,
+        message: 'Password updated for: ' + existing.email
+      });
+    }
+
+    // Create fresh if not exists
+    const user = await prisma.user.create({
+      data: {
+        email: 'admin@revorra.com',
+        username: 'RevorraAdmin',
+        passwordHash: newHash,
+        role: 'ADMIN',
+        isVerified: true,
+        isSuspended: false,
+        welcomeBonusClaimed: true,
+        canWithdrawTask: true,
+        canWithdrawReferral: true,
+        canWithdrawOnehub: true,
+      }
+    });
+
+    // Create wallet for the admin
+    await prisma.wallet.create({
+      data: {
+        userId: user.id,
+        referralBalance: 0,
+        taskBalance: 0,
+        onehubBalance: 0,
+        bonusBalance: 0,
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Admin account created successfully'
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Temporary admin setup endpoint
+router.post('/setup-admin', async (req, res) => {
+  try {
+    const bcrypt = await import('bcrypt');
+    const newHash = await bcrypt.hash('admin123', 10);
+
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: 'admin@revorra.com' },
+          { username: 'RevorraAdmin' }
+        ]
+      }
+    });
+
+    if (existing) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { passwordHash: newHash, role: 'ADMIN' }
+      });
+      return res.status(200).json({
+        success: true,
+        message: 'Password updated for: ' + existing.email
+      });
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        email: 'admin@revorra.com',
+        username: 'RevorraAdmin',
+        referralCode: 'RevorraAdmin',
+        passwordHash: newHash,
+        role: 'ADMIN',
+        isVerified: true,
+        isSuspended: false,
+        welcomeBonusClaimed: true,
+        canWithdrawTask: true,
+        canWithdrawReferral: true,
+        canWithdrawOnehub: true,
+      }
+    });
+
+    await prisma.wallet.create({
+      data: {
+        userId: user.id,
+        referralBalance: 0,
+        taskBalance: 0,
+        onehubBalance: 0,
+        bonusBalance: 0,
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Admin account created successfully'
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
     return res.status(200).json({
       success: true,
