@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import AdLoader from "@/components/AdLoader";
 
 import Home from "./pages/Home";
 import About from "./pages/About";
@@ -38,7 +37,6 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
-          <AdLoader />
           <Routes>
             {/* Public */}
             <Route path="/" element={<Home />} />

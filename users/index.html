@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Revorra - Earn Money Online</title>
     <meta name="description" content="Earn money online by completing tasks, referring friends, and playing games on Revorra." />
-    <meta name="monetag" content="a6f491dfb65f78962db835b425fd2297" />
 
     <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website" />
@@ -25,12 +24,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('SW registered'))
-          .catch(err => console.log('SW error:', err));
-      }
-    </script>
   </body>
 </html>
