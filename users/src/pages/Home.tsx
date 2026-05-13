@@ -35,7 +35,7 @@ export default function HomePage() {
             <span className="text-gradient">earning on the go</span>
           </h1>
           <p className="mt-5 text-muted-foreground text-lg max-w-lg mx-auto">
-            Complete tasks, share content, play games and invite friends — turn your time into real money.
+            Complete tasks, share content, play games and invite friends - turn your time into real money.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
             <Link to="/register" className="gradient-primary text-primary-foreground px-8 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 transition">
