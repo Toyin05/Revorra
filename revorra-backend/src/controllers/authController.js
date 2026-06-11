@@ -150,6 +150,19 @@ export const register = async (req, res) => {
       userAgent,
     });
 
+    // After user creation, ensure wallet exists
+    await prisma.wallet.upsert({
+      where: { userId: result.user.id },
+      update: {},
+      create: {
+        userId: result.user.id,
+        referralBalance: 0,
+        taskBalance: 0,
+        onehubBalance: 0,
+        bonusBalance: 0,
+      }
+    });
+
     // Log signup activity
     if (result.user) {
       await activityService.logActivity(

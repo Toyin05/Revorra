@@ -9,7 +9,7 @@ import prisma from '../config/prisma.js';
 export const requestWithdrawalHandler = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { walletType, amount, method, accountNumber, accountName, bankName } = req.body;
+    const { walletType, amount, method, accountNumber, accountName, bankName, couponCode } = req.body;
 
     // Get metadata from request
     const ipAddress = req.metadata?.ip || req.ipAddress;
@@ -30,38 +30,6 @@ export const requestWithdrawalHandler = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: 'Your account is suspended.',
-      });
-    }
-
-    // Check if user has redeemed coupon for this wallet type
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        canWithdrawTask: true,
-        canWithdrawReferral: true,
-        canWithdrawOnehub: true
-      }
-    });
-
-    // Check if user has a REDEEMED coupon request of the matching type
-    const redeemedCoupon = await prisma.couponRequest.findFirst({
-      where: {
-        userId: userId,
-        type: walletType,
-        status: 'REDEEMED'
-      }
-    });
-
-    // Check if user can withdraw - either via flag OR via redeemed coupon
-    let hasPermission = false;
-    if (walletType === 'TASK' && (user.canWithdrawTask || redeemedCoupon)) hasPermission = true;
-    if (walletType === 'REFERRAL' && (user.canWithdrawReferral || redeemedCoupon)) hasPermission = true;
-    if (walletType === 'ONEHUB' && (user.canWithdrawOnehub || redeemedCoupon)) hasPermission = true;
-
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: 'You must redeem a coupon first to unlock withdrawal for this wallet type.'
       });
     }
 
@@ -86,6 +54,81 @@ export const requestWithdrawalHandler = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Amount must be greater than 0.',
+      });
+    }
+
+    // Check if user has permission flags
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        canWithdrawTask: true,
+        canWithdrawReferral: true,
+        canWithdrawOnehub: true
+      }
+    });
+
+    // Check permission - user just needs a valid coupon code in the request
+    // OR has the permission flags set
+    // OR has any redeemed coupon (from either CouponRequest table)
+
+    let hasPermission = false;
+
+    // Check permission flags first
+    if (walletType === 'TASK' && user.canWithdrawTask) hasPermission = true;
+    if (walletType === 'REFERRAL' && user.canWithdrawReferral) hasPermission = true;
+    if (walletType === 'ONEHUB' && user.canWithdrawOnehub) hasPermission = true;
+
+    // If no permission flag, check if user provided a valid coupon code
+    if (!hasPermission && couponCode && couponCode.trim() !== '') {
+      const coupon = await prisma.coupon.findFirst({
+        where: {
+          code: couponCode.trim().toUpperCase(),
+          isUsed: false
+        }
+      });
+
+      if (coupon) {
+        hasPermission = true;
+
+        // Mark coupon as used
+        await prisma.coupon.update({
+          where: { id: coupon.id },
+          data: {
+            isUsed: true,
+            usedBy: userId,
+            usedAt: new Date()
+          }
+        });
+
+        // Set permission flag for this wallet type so future withdrawals don't need a coupon
+        const flagMap = {
+          'TASK': { canWithdrawTask: true },
+          'REFERRAL': { canWithdrawReferral: true },
+          'ONEHUB': { canWithdrawOnehub: true }
+        };
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: flagMap[walletType] || {}
+        });
+      }
+    }
+
+    // Also check old CouponRequest flow for backwards compatibility
+    if (!hasPermission) {
+      const redeemedCouponRequest = await prisma.couponRequest.findFirst({
+        where: {
+          userId: userId,
+          status: 'REDEEMED'
+        }
+      });
+      if (redeemedCouponRequest) hasPermission = true;
+    }
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'Please enter a valid coupon code to unlock withdrawal.'
       });
     }
 

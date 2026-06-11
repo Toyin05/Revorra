@@ -1006,6 +1006,37 @@ router.get('/fraud/ip/:ip', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
+// POST /api/admin/fix-wallets - Creates wallets for users who don't have one
+router.post('/fix-wallets', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const usersWithoutWallets = await prisma.user.findMany({
+      where: { wallet: null },
+      select: { id: true }
+    });
+
+    let created = 0;
+    for (const user of usersWithoutWallets) {
+      await prisma.wallet.create({
+        data: {
+          userId: user.id,
+          referralBalance: 0,
+          taskBalance: 0,
+          onehubBalance: 0,
+          bonusBalance: 0,
+        }
+      });
+      created++;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Created ${created} missing wallets`
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ==================== ANALYTICS ROUTES ====================
 
 // GET /api/admin/stats - Platform overview stats
