@@ -106,6 +106,11 @@ export default function WithdrawPage() {
       return;
     }
     
+    if (!couponCode || couponCode.trim() === '') {
+      toast.error('Coupon code is required. Please request a coupon code via WhatsApp or Telegram first.');
+      return;
+    }
+
     if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
       toast.error("Please fill all bank details");
       return;
@@ -255,7 +260,13 @@ export default function WithdrawPage() {
             onChange={(e) => setCouponCode(e.target.value)}
             placeholder="Enter your coupon code"
             className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+            style={{ borderColor: !couponCode.trim() ? '#ef4444' : '#e5e7eb' }}
           />
+          {!couponCode.trim() && (
+            <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+              ⚠️ Coupon code required — request one via WhatsApp/Telegram
+            </p>
+          )}
         </div>
 
         {/* Bank Details */}
@@ -295,8 +306,12 @@ export default function WithdrawPage() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !couponCode.trim() || !amount || !bankName.trim() || !accountNumber.trim() || !accountName.trim()}
           className="w-full gradient-primary text-primary-foreground py-4 rounded-xl font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+          style={{
+            opacity: (loading || !couponCode.trim() || !amount || !bankName.trim() || !accountNumber.trim() || !accountName.trim()) ? 0.5 : 1,
+            cursor: (loading || !couponCode.trim()) ? 'not-allowed' : 'pointer',
+          }}
         >
           {loading ? (
             <>
