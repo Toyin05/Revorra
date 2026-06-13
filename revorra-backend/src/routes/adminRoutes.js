@@ -198,6 +198,48 @@ router.post('/coupons', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/admin/coupons/silent - Generate multiple coupon codes without storing generatedFor
+router.post('/coupons/silent', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { count = 1 } = req.body;
+    const maxCount = Math.min(parseInt(count) || 1, 20);
+
+    const generateCode = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const segment = () => Array.from({length: 4}, () => 
+        chars[Math.floor(Math.random() * chars.length)]).join('');
+      return `RVRA-${segment()}-${segment()}-${segment()}`;
+    };
+
+    const codes = [];
+    for (let i = 0; i < maxCount; i++) {
+      let code;
+      let exists = true;
+      while (exists) {
+        code = generateCode();
+        const existing = await prisma.coupon.findFirst({ where: { code } });
+        exists = !!existing;
+      }
+
+      const coupon = await prisma.coupon.create({
+        data: {
+          code,
+          type: 'TASK',
+          isUsed: false,
+        }
+      });
+      codes.push(coupon.code);
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      data: { codes, count: codes.length }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ==================== COUPON REQUEST MANAGEMENT - SPECIFIC ROUTES FIRST ====================
 
 // GET /api/admin/coupons/requests - Get all coupon requests (must be BEFORE /:id routes)

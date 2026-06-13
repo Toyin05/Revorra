@@ -67,68 +67,67 @@ export const requestWithdrawalHandler = async (req, res) => {
       }
     });
 
-    // Check permission - user just needs a valid coupon code in the request
-    // OR has the permission flags set
-    // OR has any redeemed coupon (from either CouponRequest table)
-
     let hasPermission = false;
+    let couponToUse = null;
 
     // Check permission flags first
     if (walletType === 'TASK' && user.canWithdrawTask) hasPermission = true;
     if (walletType === 'REFERRAL' && user.canWithdrawReferral) hasPermission = true;
     if (walletType === 'ONEHUB' && user.canWithdrawOnehub) hasPermission = true;
 
-    // If no permission flag, check if user provided a valid coupon code
-    if (!hasPermission && couponCode && couponCode.trim() !== '') {
-      const coupon = await prisma.coupon.findFirst({
+    // If no permission flag, MUST have a valid coupon code
+    if (!hasPermission) {
+      if (!couponCode || couponCode.trim() === '') {
+        return res.status(403).json({
+          success: false,
+          message: 'You need a coupon code to withdraw. Please request one via WhatsApp or Telegram first.'
+        });
+      }
+
+      // Look up the coupon - must exist and must not be used
+      couponToUse = await prisma.coupon.findFirst({
         where: {
           code: couponCode.trim().toUpperCase(),
           isUsed: false
         }
       });
 
-      if (coupon) {
-        hasPermission = true;
-
-        // Mark coupon as used
-        await prisma.coupon.update({
-          where: { id: coupon.id },
-          data: {
-            isUsed: true,
-            usedBy: userId,
-            usedAt: new Date()
-          }
+      if (!couponToUse) {
+        // Check if it exists but is already used
+        const usedCoupon = await prisma.coupon.findFirst({
+          where: { code: couponCode.trim().toUpperCase() }
         });
 
-        // Set permission flag for this wallet type so future withdrawals don't need a coupon
-        const flagMap = {
-          'TASK': { canWithdrawTask: true },
-          'REFERRAL': { canWithdrawReferral: true },
-          'ONEHUB': { canWithdrawOnehub: true }
-        };
+        if (usedCoupon) {
+          return res.status(400).json({
+            success: false,
+            message: 'This coupon code has already been used. Please request a new one.'
+          });
+        }
 
-        await prisma.user.update({
-          where: { id: userId },
-          data: flagMap[walletType] || {}
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid coupon code. Please check the code and try again, or request a new one via WhatsApp/Telegram.'
         });
       }
+
+      // Coupon is valid - set permission
+      hasPermission = true;
     }
 
     // Also check old CouponRequest flow for backwards compatibility
     if (!hasPermission) {
       const redeemedCouponRequest = await prisma.couponRequest.findFirst({
-        where: {
-          userId: userId,
-          status: 'REDEEMED'
-        }
+        where: { userId: userId, status: 'REDEEMED' }
       });
       if (redeemedCouponRequest) hasPermission = true;
     }
 
+    // Final permission check - this MUST be true before anything proceeds
     if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        message: 'Please enter a valid coupon code to unlock withdrawal.'
+        message: 'You need a valid coupon code to withdraw. Please request one via WhatsApp or Telegram.'
       });
     }
 
@@ -139,7 +138,31 @@ export const requestWithdrawalHandler = async (req, res) => {
       bankName,
     };
 
+    // Create withdrawal - will throw error if fails (e.g., insufficient balance)
     const withdrawal = await requestWithdrawal(userId, walletType, amount, withdrawalDetails);
+
+    // Only mark coupon as used AFTER withdrawal is successfully created
+    if (couponToUse) {
+      await prisma.coupon.update({
+        where: { id: couponToUse.id },
+        data: {
+          isUsed: true,
+          usedBy: userId,
+          usedAt: new Date()
+        }
+      });
+
+      // Set permission flag so user doesn't need coupon for future withdrawals of same type
+      const flagMap = {
+        'TASK': { canWithdrawTask: true },
+        'REFERRAL': { canWithdrawReferral: true },
+        'ONEHUB': { canWithdrawOnehub: true }
+      };
+      await prisma.user.update({
+        where: { id: userId },
+        data: flagMap[walletType] || {}
+      });
+    }
 
     // Log activity
     await activityService.logActivity(
