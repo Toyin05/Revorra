@@ -70,32 +70,21 @@ export const requestWithdrawalHandler = async (req, res) => {
     let hasPermission = false;
     let couponToUse = null;
 
-    // Check permission flags first
-    if (walletType === 'TASK' && user.canWithdrawTask) hasPermission = true;
-    if (walletType === 'REFERRAL' && user.canWithdrawReferral) hasPermission = true;
-    if (walletType === 'ONEHUB' && user.canWithdrawOnehub) hasPermission = true;
+    const cleanCouponCode = couponCode ? couponCode.trim().toUpperCase() : '';
 
-    // If no permission flag, MUST have a valid coupon code
-    if (!hasPermission) {
-      if (!couponCode || couponCode.trim() === '') {
-        return res.status(403).json({
-          success: false,
-          message: 'You need a coupon code to withdraw. Please request one via WhatsApp or Telegram first.'
-        });
-      }
-
-      // Look up the coupon - must exist and must not be used
+    // If a coupon code was provided, ALWAYS validate it — even if user already has permission flags
+    // This prevents users from typing garbage and having it silently ignored
+    if (cleanCouponCode !== '') {
       couponToUse = await prisma.coupon.findFirst({
         where: {
-          code: couponCode.trim().toUpperCase(),
+          code: cleanCouponCode,
           isUsed: false
         }
       });
 
       if (!couponToUse) {
-        // Check if it exists but is already used
         const usedCoupon = await prisma.coupon.findFirst({
-          where: { code: couponCode.trim().toUpperCase() }
+          where: { code: cleanCouponCode }
         });
 
         if (usedCoupon) {
@@ -111,11 +100,18 @@ export const requestWithdrawalHandler = async (req, res) => {
         });
       }
 
-      // Coupon is valid - set permission
+      // Coupon is valid
       hasPermission = true;
     }
 
-    // Also check old CouponRequest flow for backwards compatibility
+    // If no coupon provided, check permission flags
+    if (!hasPermission) {
+      if (walletType === 'TASK' && user.canWithdrawTask) hasPermission = true;
+      if (walletType === 'REFERRAL' && user.canWithdrawReferral) hasPermission = true;
+      if (walletType === 'ONEHUB' && user.canWithdrawOnehub) hasPermission = true;
+    }
+
+    // If still no permission, check old CouponRequest flow for backwards compatibility
     if (!hasPermission) {
       const redeemedCouponRequest = await prisma.couponRequest.findFirst({
         where: { userId: userId, status: 'REDEEMED' }
@@ -123,7 +119,7 @@ export const requestWithdrawalHandler = async (req, res) => {
       if (redeemedCouponRequest) hasPermission = true;
     }
 
-    // Final permission check - this MUST be true before anything proceeds
+    // Final gate — nothing proceeds without permission
     if (!hasPermission) {
       return res.status(403).json({
         success: false,
