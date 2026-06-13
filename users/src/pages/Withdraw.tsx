@@ -263,8 +263,8 @@ export default function WithdrawPage() {
             style={{ borderColor: !couponCode.trim() ? '#ef4444' : '#e5e7eb' }}
           />
           {!couponCode.trim() && (
-            <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
-              ⚠️ Coupon code required — request one via WhatsApp/Telegram
+            <p className="text-xs mt-1">
+               Coupon code required — request one via WhatsApp/Telegram
             </p>
           )}
         </div>

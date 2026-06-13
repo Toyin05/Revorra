@@ -278,6 +278,7 @@ model Coupon {
   isUsed      Boolean     @default(false) @map("is_used")
   usedBy      String?     @map("used_by")
   usedAt      DateTime?   @map("used_at")
+  hidden      Boolean     @default(false)
   createdAt   DateTime    @default(now()) @map("created_at")
 
   // Relations

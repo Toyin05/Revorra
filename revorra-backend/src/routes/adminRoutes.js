@@ -226,6 +226,7 @@ router.post('/coupons/silent', authenticateToken, requireAdmin, async (req, res)
           code,
           type: 'TASK',
           isUsed: false,
+          hidden: true,
         }
       });
       codes.push(coupon.code);
@@ -413,6 +414,7 @@ router.patch('/coupons/:id/reject', authenticateToken, requireAdmin, async (req,
 router.get('/coupons', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const coupons = await prisma.coupon.findMany({
+      where: { hidden: false },
       orderBy: { createdAt: 'desc' },
       take: 100
     });
