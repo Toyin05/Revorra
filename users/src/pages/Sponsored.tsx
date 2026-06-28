@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getTasks, completeTask } from "@/api/tasksApi";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Share2, Upload, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Share2, Clock, CheckCircle2, XCircle } from "lucide-react";
 import BackButton from "@/components/BackButton";
 
 interface SponsoredTask {
@@ -22,11 +22,8 @@ export default function SponsoredPage() {
   const [loading, setLoading] = useState(true);
   const [completedTasks, setCompletedTasks] = useState<Map<string, string>>(new Map());
   const [activeTask, setActiveTask] = useState<string | null>(null);
-  const [proofMode, setProofMode] = useState<"upload" | "link">("link");
-  const [proofImage, setProofImage] = useState<string | null>(null);
   const [proofLink, setProofLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -71,59 +68,18 @@ export default function SponsoredPage() {
     window.open(whatsappUrl, "_blank");
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImageError(null);
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      setImageError("Only JPG, PNG, and WebP images are allowed");
-      return;
-    }
-
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setImageError("File size must be less than 5MB");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProofImage(reader.result as string);
-    };
-    reader.onerror = () => {
-      setImageError("Failed to read file");
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleSubmitProof = async (taskId: string) => {
-    let proof: string;
-
-    if (proofMode === "upload") {
-      if (!proofImage) {
-        toast.error("Please upload a screenshot");
-        return;
-      }
-      proof = proofImage;
-    } else {
-      if (!proofLink.trim()) {
-        toast.error("Please provide a proof link");
-        return;
-      }
-      proof = proofLink;
+    if (!proofLink.trim()) {
+      toast.error("Please provide a proof link");
+      return;
     }
 
     setSubmitting(true);
     try {
-      await completeTask(taskId, proof);
+      await completeTask(taskId, proofLink);
       setCompletedTasks(new Map(completedTasks.set(taskId, "pending")));
       setActiveTask(null);
-      setProofImage(null);
       setProofLink("");
-      setProofMode("link");
       toast.success("Task submitted for review!");
     } catch (err) {
       console.error("Failed to submit task:", err);
@@ -226,69 +182,17 @@ export default function SponsoredPage() {
 
                 {isActive && (
                   <div className="mt-3 space-y-2">
-                    <div className="flex gap-2 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => { setProofMode("upload"); setImageError(null); }}
-                        className={`flex-1 py-2 text-xs font-medium rounded-xl transition ${
-                          proofMode === "upload" 
-                            ? "gradient-primary text-primary-foreground" 
-                            : "border text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <Upload className="h-3 w-3 inline mr-1" />
-                        Upload
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setProofMode("link"); setImageError(null); }}
-                        className={`flex-1 py-2 text-xs font-medium rounded-xl transition ${
-                          proofMode === "link" 
-                            ? "gradient-primary text-primary-foreground" 
-                            : "border text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        Paste Link
-                      </button>
-                    </div>
-
-                    {proofMode === "upload" ? (
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/jpg,image/webp"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                          id={`proof-upload-${task.id}`}
-                        />
-                        <label
-                          htmlFor={`proof-upload-${task.id}`}
-                          className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer hover:bg-muted/50 transition"
-                        >
-                          {proofImage ? (
-                            <img src={proofImage} alt="Preview" className="h-full w-full object-contain rounded-lg p-1" />
-                          ) : (
-                            <>
-                              <Upload className="h-5 w-5 text-muted-foreground mb-1" />
-                              <span className="text-xs text-muted-foreground">Upload screenshot</span>
-                            </>
-                          )}
-                        </label>
-                        {imageError && <p className="text-xs text-red-500 mt-1">{imageError}</p>}
-                      </div>
-                    ) : (
-                      <input 
-                        type="text" 
-                        value={proofLink} 
-                        onChange={(e) => setProofLink(e.target.value)} 
-                        placeholder="Paste your proof link"
-                        className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background" 
-                      />
-                    )}
+                    <input 
+                      type="text" 
+                      value={proofLink} 
+                      onChange={(e) => setProofLink(e.target.value)} 
+                      placeholder="Paste your proof link"
+                      className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background" 
+                    />
 
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => { setActiveTask(null); setProofImage(null); setProofLink(""); setImageError(null); }} 
+                        onClick={() => { setActiveTask(null); setProofLink(""); }} 
                         className="flex-1 border rounded-xl py-2 text-xs font-medium cursor-pointer hover:bg-muted transition"
                       >
                         Cancel
