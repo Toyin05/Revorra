@@ -302,12 +302,6 @@ export default function TasksPage() {
               <Share2 className="h-3 w-3" />
               Share on WhatsApp
             </button>
-            <button 
-              onClick={() => setActiveProofTask(task.id)} 
-              className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition"
-            >
-              Submit Proof
-            </button>
           </div>
         )}
 

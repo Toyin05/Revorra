@@ -171,32 +171,12 @@ export default function SponsoredPage() {
                       <Share2 className="h-3 w-3" />
                       Share on WhatsApp
                     </button>
-                    <button 
-                      onClick={() => setActiveTask(task.id)} 
-                      className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition"
-                    >
-                      Submit Proof
-                    </button>
                   </div>
                 )}
 
                 {isActive && (
                   <div className="mt-3 space-y-2">
-                    <input 
-                      type="text" 
-                      value={proofLink} 
-                      onChange={(e) => setProofLink(e.target.value)} 
-                      placeholder="Paste your proof link"
-                      className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background" 
-                    />
-
                     <div className="flex gap-2">
-                      <button 
-                        onClick={() => { setActiveTask(null); setProofLink(""); }} 
-                        className="flex-1 border rounded-xl py-2 text-xs font-medium cursor-pointer hover:bg-muted transition"
-                      >
-                        Cancel
-                      </button>
                       <button 
                         onClick={() => handleSubmitProof(task.id)} 
                         disabled={submitting}
