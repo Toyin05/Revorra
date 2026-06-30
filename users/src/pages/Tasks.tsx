@@ -184,12 +184,6 @@ export default function TasksPage() {
             >
               Visit Link
             </a>
-            <button 
-              onClick={() => setConfirmingTask(task.id)} 
-              className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition"
-            >
-              Confirm Done
-            </button>
           </div>
         )}
         
