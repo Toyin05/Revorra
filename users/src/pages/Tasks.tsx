@@ -23,20 +23,13 @@ interface TaskWithStatus extends Task {
 }
 
 export default function TasksPage() {
-  const { user, wallet, updateWallet, refreshWallet } = useAuth();
+  const { user, refreshWallet } = useAuth();
   const [tasks, setTasks] = useState<TaskWithStatus[]>([]);
   const [completedTasks, setCompletedTasks] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [activeProofTask, setActiveProofTask] = useState<string | null>(null);
-  const [proofLink, setProofLink] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  // State for regular task proof input
-  const [confirmingTask, setConfirmingTask] = useState<string | null>(null);
-  const [proofText, setProofText] = useState<{[key: string]: string}>({});
-  const [regularSubmitting, setRegularSubmitting] = useState(false);
 
   const loadTasks = async () => {
+    setLoading(true);
     try {
       const res = await getTasks();
       const tasksData = res.data.data;
@@ -77,45 +70,20 @@ export default function TasksPage() {
     const shareUrl = task.shareLink || (task.link?.startsWith('http') ? task.link : `https://${task.link}`);
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}`;
     window.open(whatsappUrl, "_blank");
-  };
 
-  const handleSubmitProof = async (taskId: string) => {
-    if (!proofLink.trim()) {
-      toast.error("Please provide a proof link");
-      return;
-    }
-    const proof = proofLink;
-
-    setSubmitting(true);
-    const task = tasks.find(t => t.id === taskId);
-    const reward = task?.reward || 0;
-    const isSponsored = isSponsoredTask(task);
-
-    try {
-      const res = await completeTask(taskId, proof);
-      const updatedWallet = res.data.data.wallet;
-      if (updatedWallet) {
-        refreshWallet(updatedWallet);
-      }
-      setCompletedTasks(new Map(completedTasks.set(taskId, "approved")));
-      setActiveProofTask(null);
-      setProofLink("");
-      toast.success("Task recorded: Balance updated successfully!");
-      setTasks(prev => prev.filter(t => t.id !== taskId));
-      loadTasks();
-    } catch (err: any) {
-      console.error("Failed to submit task:", err);
-      if (err.response?.status === 400) {
-        setCompletedTasks(new Map(completedTasks.set(taskId, "approved")));
-        setActiveProofTask(null);
-        setProofLink("");
-        toast.success("Task recorded: Balance updated successfully!");
-        loadTasks();
-      } else {
-        toast.error("Failed to submit task. Please try again.");
-      }
-    } finally {
-      setSubmitting(false);
+    // Auto-complete the task after sharing
+    if (!isCompleted(task.id)) {
+      completeTask(task.id, 'auto-approved').then(res => {
+        const updatedWallet = res.data.data.wallet;
+        if (updatedWallet) {
+          refreshWallet(updatedWallet);
+        }
+        setCompletedTasks(new Map(completedTasks.set(task.id, "approved")));
+        toast.success("Task completed! Balance updated.");
+        setTasks(prev => prev.filter(t => t.id !== task.id));
+      }).catch(() => {
+        // Silently fail - task might already be completed
+      });
     }
   };
 
@@ -152,8 +120,24 @@ export default function TasksPage() {
 
   const renderRegularTask = (task: Task, i: number) => {
     const done = isCompleted(task.id);
-    const isConfirming = confirmingTask === task.id;
-    
+
+    const handleComplete = async (taskId: string) => {
+      if (isCompleted(taskId)) return;
+
+      try {
+        const res = await completeTask(taskId, 'auto-approved');
+        const updatedWallet = res.data.data.wallet;
+        if (updatedWallet) {
+          refreshWallet(updatedWallet);
+        }
+        setCompletedTasks(new Map(completedTasks.set(taskId, "approved")));
+        toast.success("Task completed! Balance updated.");
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to complete task.');
+      }
+    };
+
     return (
       <motion.div
         key={task.id}
@@ -172,101 +156,28 @@ export default function TasksPage() {
             <p className="text-xs font-semibold text-primary mt-1">Reward: €{(task.reward ?? 0).toFixed(2)}</p>
           </div>
         </div>
-        
-        {/* Normal state - buttons */}
-        {!done && !isConfirming && (
+
+        {!done && (
           <div className="flex gap-2 mt-3">
-            <a 
-              href={task.link?.startsWith('http') ? task.link : `https://${task.link}`} 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href={task.link?.startsWith('http') ? task.link : `https://${task.link}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => handleComplete(task.id)}
               className="flex-1 border rounded-xl py-2 text-center text-xs font-medium cursor-pointer hover:bg-muted transition"
             >
               Visit Link
             </a>
           </div>
         )}
-        
-        {/* Expand proof input when confirming */}
-        {isConfirming && (
-          <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
-            <p className="text-xs text-muted-foreground font-medium">
-              Provide proof of completion:
-            </p>
 
-            <input
-              type="text"
-              placeholder="Paste a link as proof (e.g. post URL, screenshot link)"
-              value={proofText[task.id] || ""}
-              onChange={(e) => setProofText(prev => ({ ...prev, [task.id]: e.target.value }))}
-              className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
-            />
-
-            <div className="flex gap-2">
-              <button 
-                onClick={() => { 
-                  setConfirmingTask(null); 
-                  setProofText(prev => ({ ...prev, [task.id]: "" })); 
-                }} 
-                className="flex-1 border rounded-xl py-2 text-xs font-medium cursor-pointer hover:bg-muted transition"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => handleComplete(task.id)} 
-                disabled={regularSubmitting}
-                className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50"
-              >
-                {regularSubmitting ? "Submitting..." : "Submit Proof"}
-              </button>
-            </div>
-          </div>
-        )}
-        
         {done && <p className="text-xs text-green-600 font-medium mt-2">✓ Completed</p>}
       </motion.div>
     );
   };
 
-  const handleComplete = async (taskId: string) => {
-    const proof = proofText[taskId]?.trim() || '';
-
-    if (!proof) {
-      toast.error('Please provide proof before submitting.');
-      return;
-    }
-
-    const task = tasks.find(t => t.id === taskId);
-    const reward = task?.reward || 0;
-    const isSponsored = isSponsoredTask(task);
-
-    try {
-      const res = await completeTask(taskId, proof);
-      const updatedWallet = res.data.data.wallet;
-      if (updatedWallet) {
-        refreshWallet(updatedWallet);
-      }
-      toast.success("Task recorded: Balance updated successfully!");
-      setConfirmingTask(null);
-      setProofText(prev => ({ ...prev, [taskId]: '' }));
-      setTasks(prev => prev.filter(t => t.id !== taskId));
-      loadTasks();
-    } catch (error: any) {
-      console.error("Failed to submit task:", error);
-      if (error.response?.status === 400) {
-        toast.success("Task recorded: Balance updated successfully!");
-        setConfirmingTask(null);
-        setProofText(prev => ({ ...prev, [taskId]: '' }));
-        loadTasks();
-      } else {
-        toast.error(error.response?.data?.message || 'Failed to submit task.');
-      }
-    }
-  };
-
   const renderSponsoredTask = (task: Task, i: number) => {
     const done = isCompleted(task.id);
-    const isActive = activeProofTask === task.id;
 
     return (
       <motion.div
@@ -287,43 +198,15 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {!done && !isActive && (
+        {!done && (
           <div className="flex gap-2 mt-3">
-            <button 
-              onClick={() => handleShare(task)} 
+            <button
+              onClick={() => handleShare(task)}
               className="flex-1 border rounded-xl py-2 text-center text-xs font-medium cursor-pointer hover:bg-muted transition flex items-center justify-center gap-1"
             >
               <Share2 className="h-3 w-3" />
               Share on WhatsApp
             </button>
-          </div>
-        )}
-
-        {isActive && (
-          <div className="mt-3 space-y-2">
-            <input 
-              type="text" 
-              value={proofLink} 
-              onChange={(e) => setProofLink(e.target.value)} 
-              placeholder="Paste your proof link here"
-              className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" 
-            />
-
-            <div className="flex gap-2">
-              <button 
-                onClick={() => { setActiveProofTask(null); setProofLink(""); }} 
-                className="flex-1 border rounded-xl py-2 text-xs font-medium cursor-pointer hover:bg-muted transition"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => handleSubmitProof(task.id)} 
-                disabled={submitting}
-                className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50"
-              >
-                {submitting ? "Submitting..." : "Submit"}
-              </button>
-            </div>
           </div>
         )}
 

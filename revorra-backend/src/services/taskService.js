@@ -78,7 +78,7 @@ export const getTaskById = async (taskId) => {
  * @param {string} userId - User's ID
  * @param {string} taskId - Task's ID
  * @param {string} proof - Proof of completion
- * @returns {Object} Created completion record
+ * @returns {Object} Created completion record with wallet
  */
 export const completeTask = async (userId, taskId, proof) => {
   // Check if task exists and is valid
@@ -139,28 +139,43 @@ export const completeTask = async (userId, taskId, proof) => {
     }
   }
 
-  // Create completion record
-  const completion = await prisma.taskCompletion.create({
-    data: {
-      userId,
-      taskId,
-      proof,
-      status: 'PENDING',
-    },
+  // Create completion record and credit wallet in one transaction
+  const result = await prisma.$transaction(async (tx) => {
+    // Create completion record — auto-approved immediately
+    const completion = await tx.taskCompletion.create({
+      data: {
+        userId,
+        taskId,
+        proof: proof || 'auto-approved',
+        status: 'APPROVED',
+      },
+    });
+
+    // Credit the wallet immediately
+    const wallet = await tx.wallet.update({
+      where: { userId },
+      data: {
+        taskBalance: {
+          increment: task.reward,
+        },
+      },
+    });
+
+    // Create a transaction record
+    await tx.transaction.create({
+      data: {
+        userId,
+        type: 'TASK_REWARD',
+        amount: task.reward,
+        description: `Task reward: ${task.title}`,
+        status: 'COMPLETED',
+      },
+    });
+
+    return { completion, wallet };
   });
 
-  // Create admin notification for new task submission
-  await prisma.userNotification.create({
-    data: {
-      userId: null, // Admin notification
-      type: 'TASK_SUBMISSION',
-      title: 'New Task Submission',
-      message: `User submitted proof for task: ${task.title}`,
-      data: { completionId: completion.id, taskId, userId }
-    }
-  });
-
-  return completion;
+  return { ...result.completion, wallet: result.wallet };
 };
 
 /**

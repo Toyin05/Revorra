@@ -86,14 +86,6 @@ export const complete = async (req, res) => {
       });
     }
 
-    // Validate proof
-    if (!proof || proof.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Proof is required.',
-      });
-    }
-
     // Complete the task
     const completion = await completeTask(userId, taskId, proof);
 
@@ -113,6 +105,7 @@ export const complete = async (req, res) => {
         taskId: completion.taskId,
         status: completion.status,
         completedAt: completion.completedAt,
+        wallet: completion.wallet,
       },
     });
   } catch (error) {

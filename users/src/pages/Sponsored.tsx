@@ -17,75 +17,69 @@ interface SponsoredTask {
 }
 
 export default function SponsoredPage() {
-  const { user } = useAuth();
+  const { user, refreshWallet } = useAuth();
   const [tasks, setTasks] = useState<SponsoredTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [completedTasks, setCompletedTasks] = useState<Map<string, string>>(new Map());
-  const [activeTask, setActiveTask] = useState<string | null>(null);
-  const [proofLink, setProofLink] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+
+  const loadTasks = async () => {
+    setLoading(true);
+    try {
+      const res = await getTasks();
+      const allTasks = res.data.data;
+      
+      // Filter only SPONSORED_POST tasks
+      const sponsored = allTasks.filter((t: any) => t.taskType === "SPONSORED_POST");
+      
+      // Get completion status
+      const completedMap = new Map<string, string>();
+      sponsored.forEach((t: any) => {
+        if (t.status === "completed" || t.is_completed) {
+          completedMap.set(t.id, "approved");
+        } else if (t.status === "pending") {
+          completedMap.set(t.id, "pending");
+        } else if (t.status === "rejected") {
+          completedMap.set(t.id, "rejected");
+        }
+      });
+      
+      setTasks(sponsored);
+      setCompletedTasks(completedMap);
+    } catch (err) {
+      console.error("Failed to load sponsored tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        const res = await getTasks();
-        const allTasks = res.data.data;
-        
-        // Filter only SPONSORED_POST tasks
-        const sponsored = allTasks.filter((t: any) => t.taskType === "SPONSORED_POST");
-        
-        // Get completion status
-        const completedMap = new Map<string, string>();
-        sponsored.forEach((t: any) => {
-          if (t.status === "completed" || t.is_completed) {
-            completedMap.set(t.id, "approved");
-          } else if (t.status === "pending") {
-            completedMap.set(t.id, "pending");
-          } else if (t.status === "rejected") {
-            completedMap.set(t.id, "rejected");
-          }
-        });
-        
-        setTasks(sponsored);
-        setCompletedTasks(completedMap);
-      } catch (err) {
-        console.error("Failed to load sponsored tasks:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadTasks();
   }, []);
 
   if (!user) return null;
 
   const getStatus = (taskId: string) => completedTasks.get(taskId);
+  const isCompleted = (taskId: string) => completedTasks.has(taskId);
 
   const handleShare = (task: SponsoredTask) => {
     const shareText = task.shareMessage || "Check out this post!";
     const shareUrl = task.shareLink || "";
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}`;
     window.open(whatsappUrl, "_blank");
-  };
 
-  const handleSubmitProof = async (taskId: string) => {
-    if (!proofLink.trim()) {
-      toast.error("Please provide a proof link");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await completeTask(taskId, proofLink);
-      setCompletedTasks(new Map(completedTasks.set(taskId, "pending")));
-      setActiveTask(null);
-      setProofLink("");
-      toast.success("Task submitted for review!");
-    } catch (err) {
-      console.error("Failed to submit task:", err);
-      toast.error("Failed to submit task. Please try again.");
-    } finally {
-      setSubmitting(false);
+    // Auto-complete the task after sharing
+    if (!isCompleted(task.id)) {
+      completeTask(task.id, 'auto-approved').then(res => {
+        const updatedWallet = res.data.data.wallet;
+        if (updatedWallet) {
+          refreshWallet(updatedWallet);
+        }
+        setCompletedTasks(new Map(completedTasks.set(task.id, "approved")));
+        toast.success("Task completed! Balance updated.");
+        setTasks(prev => prev.filter(t => t.id !== task.id));
+      }).catch(() => {
+        // Silently fail - task might already be completed
+      });
     }
   };
 
@@ -120,8 +114,6 @@ export default function SponsoredPage() {
     return null;
   };
 
-  const isCompleted = (taskId: string) => completedTasks.has(taskId);
-
   if (loading) {
     return (
       <div className="p-4 md:p-6 max-w-3xl mx-auto">
@@ -147,7 +139,6 @@ export default function SponsoredPage() {
         <div className="space-y-4">
           {tasks.map((task) => {
             const done = isCompleted(task.id);
-            const isActive = activeTask === task.id;
 
             return (
               <div key={task.id} className={`bg-card border rounded-2xl p-4 ${done ? "opacity-75" : ""}`}>
@@ -162,7 +153,7 @@ export default function SponsoredPage() {
                   </div>
                 </div>
 
-                {!done && !isActive && (
+                {!done && (
                   <div className="flex gap-2 mt-3">
                     <button 
                       onClick={() => handleShare(task)} 
@@ -171,20 +162,6 @@ export default function SponsoredPage() {
                       <Share2 className="h-3 w-3" />
                       Share on WhatsApp
                     </button>
-                  </div>
-                )}
-
-                {isActive && (
-                  <div className="mt-3 space-y-2">
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleSubmitProof(task.id)} 
-                        disabled={submitting}
-                        className="flex-1 gradient-primary text-primary-foreground rounded-xl py-2 text-xs font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50"
-                      >
-                        {submitting ? "Submitting..." : "Submit"}
-                      </button>
-                    </div>
                   </div>
                 )}
 
