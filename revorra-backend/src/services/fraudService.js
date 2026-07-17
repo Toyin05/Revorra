@@ -41,37 +41,36 @@ const fraudService = {
 
   /**
    * Detect referral abuse (same IP for referrer and referred)
-   * @param {string} referrerId - Referrer user ID
-   * @param {string} referredUserId - Referred user ID
-   * @param {string} ipAddress - Signup IP
-   * @returns {boolean} True if abuse detected
+   * @param {string} userId - New user ID
+   * @param {string} referralCode - Referral code used
+   * @returns {Object} Abuse detection result
    */
-  async detectReferralAbuse(referrerId, referredUserId, ipAddress) {
+  async detectReferralAbuse(userId, referralCode) {
     try {
-      // Check if referrer and referred have same IP
-      const referrer = await prisma.user.findUnique({
-        where: { id: referrerId },
-        select: { signupIP: true, deviceFingerprint: true }
+      if (!userId || !referralCode) return { isAbuse: false };
+
+      const referrer = await prisma.user.findFirst({
+        where: { referralCode: referralCode },
+        select: { id: true, signupIP: true }
       });
 
-      if (!referrer) return false;
+      if (!referrer) return { isAbuse: false };
 
-      // Check IP match
-      const sameIP = referrer.signupIP === ipAddress;
-      
-      // Check device fingerprint match
-      const referredUser = await prisma.user.findUnique({
-        where: { id: referredUserId },
-        select: { deviceFingerprint: true }
+      const newUser = await prisma.user.findFirst({
+        where: { id: userId },
+        select: { id: true, signupIP: true }
       });
 
-      const sameDevice = referrer.deviceFingerprint && 
-                        referredUser?.deviceFingerprint === referrer.deviceFingerprint;
+      if (!newUser) return { isAbuse: false };
 
-      return sameIP || sameDevice;
+      if (referrer.signupIP && newUser.signupIP && referrer.signupIP === newUser.signupIP) {
+        return { isAbuse: true, reason: 'Same IP address as referrer' };
+      }
+
+      return { isAbuse: false };
     } catch (error) {
-      console.error('Error detecting referral abuse:', error);
-      return false;
+      console.error('Error detecting referral abuse:', error.message);
+      return { isAbuse: false };
     }
   },
 

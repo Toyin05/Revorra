@@ -110,18 +110,6 @@ export const register = async (req, res) => {
           message: 'Invalid referral code.',
         });
       }
-
-      // Check if referral is from same IP/device
-      const abuseDetected = await fraudService.detectReferralAbuse(
-        referrer.id,
-        null, // user not created yet
-        ipAddress
-      );
-
-      if (abuseDetected) {
-        console.log(`Potential referral abuse detected: referrer ${referrer.id} and signup IP ${ipAddress}`);
-        // Don't block but flag for review
-      }
     }
 
     // Check IP abuse (multiple accounts from same IP)
@@ -182,6 +170,16 @@ export const register = async (req, res) => {
         });
 
         if (referrer && referrer.id !== result.user.id) {
+          // Check referral abuse after user creation
+          const abuseResult = await fraudService.detectReferralAbuse(
+            result.user.id,
+            referralCode.trim()
+          );
+
+          if (abuseResult.isAbuse) {
+            console.log(`Potential referral abuse detected: ${abuseResult.reason}`);
+            // Don't block but flag for review
+          }
 
           // Check if referral record already exists
           const existingReferral = await prisma.referral.findUnique({
