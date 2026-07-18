@@ -60,7 +60,17 @@ router.post('/airtime', authenticateToken, async (req, res) => {
       });
     }
 
-    const amountEUR = parseFloat(amount);
+    const amountEUR = parseFloat(
+      typeof amount === 'object' ? JSON.stringify(amount) : amount
+    ) || 0;
+
+    if (!amountEUR || amountEUR <= 0 || isNaN(amountEUR)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid amount. Please enter a valid number.'
+      });
+    }
+
     const amountNGN = eurToNgn(amountEUR);
 
     if (amountNGN < 50) {
@@ -114,11 +124,13 @@ router.post('/airtime', authenticateToken, async (req, res) => {
         userId,
         phone: phoneNumber,
         network: network.toUpperCase(),
-        amount: amountEUR,
+        amount: parseFloat(amountEUR),
         type: 'AIRTIME',
         status,
-        providerRef: clientReference,
-        providerResponse: JSON.stringify(twResponse)
+        providerRef: clientReference || null,
+        providerResponse: typeof twResponse === 'string' 
+          ? twResponse 
+          : JSON.stringify(twResponse || {})
       }
     });
 
@@ -157,7 +169,18 @@ router.post('/data', authenticateToken, async (req, res) => {
       });
     }
 
-    const amountEUR = ngnToEur(parseFloat(amountNGN));
+    const amountEUR = parseFloat(
+      typeof amountNGN === 'object' ? JSON.stringify(amountNGN) : amountNGN
+    ) || 0;
+
+    if (!amountEUR || amountEUR <= 0 || isNaN(amountEUR)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid amount. Please enter a valid number.'
+      });
+    }
+
+    const amountNGNConverted = eurToNgn(amountEUR);
 
     // Check wallet balance
     const wallet = await prisma.wallet.findUnique({ where: { userId } });
@@ -202,11 +225,13 @@ router.post('/data', authenticateToken, async (req, res) => {
         userId,
         phone: phoneNumber,
         network: network.toUpperCase(),
-        amount: amountEUR,
+        amount: parseFloat(amountEUR),
         type: 'DATA',
         status,
-        providerRef: clientReference,
-        providerResponse: JSON.stringify(twResponse)
+        providerRef: clientReference || null,
+        providerResponse: typeof twResponse === 'string' 
+          ? twResponse 
+          : JSON.stringify(twResponse || {})
       }
     });
 
@@ -218,7 +243,7 @@ router.post('/data', authenticateToken, async (req, res) => {
       data: {
         id: vtuTransaction.id,
         amountEUR,
-        amountNGN,
+        amountNGN: amountNGNConverted,
         network: network.toUpperCase(),
         phoneNumber,
         planName,

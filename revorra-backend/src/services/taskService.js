@@ -141,38 +141,46 @@ export const completeTask = async (userId, taskId, proof) => {
 
   // Create completion record and credit wallet in one transaction
   const result = await prisma.$transaction(async (tx) => {
-    // Create completion record — auto-approved immediately
-    const completion = await tx.taskCompletion.create({
-      data: {
-        userId,
-        taskId,
-        proof: proof || 'auto-approved',
-        status: 'APPROVED',
-      },
-    });
-
-    // Credit the wallet immediately
-    const wallet = await tx.wallet.update({
-      where: { userId },
-      data: {
-        taskBalance: {
-          increment: task.reward,
+    try {
+      // Create completion record — auto-approved immediately
+      const completion = await tx.taskCompletion.create({
+        data: {
+          userId,
+          taskId,
+          proof: proof || 'auto-approved',
+          status: 'APPROVED',
         },
-      },
-    });
+      });
 
-    // Create a transaction record
-    await tx.transaction.create({
-      data: {
-        userId,
-        type: 'TASK_REWARD',
-        amount: task.reward,
-        description: `Task reward: ${task.title}`,
-        status: 'COMPLETED',
-      },
-    });
+      // Credit the wallet immediately
+      const wallet = await tx.wallet.update({
+        where: { userId },
+        data: {
+          taskBalance: {
+            increment: task.reward,
+          },
+        },
+      });
 
-    return { completion, wallet };
+      // Create a transaction record
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: 'TASK_REWARD',
+          amount: task.reward,
+          description: `Task reward: ${task.title}`,
+          status: 'COMPLETED',
+        },
+      });
+
+      return { completion, wallet };
+    } catch (error) {
+      // Handle duplicate completion gracefully
+      if (error.code === 'P2002' && error.meta?.target?.includes('task_id')) {
+        throw new Error('Task already completed');
+      }
+      throw error;
+    }
   });
 
   return { ...result.completion, wallet: result.wallet };

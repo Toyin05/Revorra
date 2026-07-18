@@ -70,6 +70,12 @@ export const getDataPlans = async (network) => {
 };
 
 export const purchaseAirtime = async (network, phoneNumber, amountNGN) => {
+  const numericAmount = parseFloat(amountNGN);
+  
+  if (!numericAmount || isNaN(numericAmount)) {
+    throw new Error('Invalid airtime amount');
+  }
+  
   const headers = await getHeaders();
   const serviceID = AIRTIME_SERVICE_IDS[network.toUpperCase()];
   if (!serviceID) throw new Error('Invalid network');
@@ -78,7 +84,7 @@ export const purchaseAirtime = async (network, phoneNumber, amountNGN) => {
 
   const response = await axios.post(`${BASE_URL}/airtime`, {
     serviceID,
-    amount: amountNGN,
+    amount: numericAmount,
     mobileNumber: phoneNumber,
     clientReference,
     bypassMobileValidator: false
