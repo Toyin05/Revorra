@@ -29,24 +29,39 @@ router.post('/:id/complete', authenticateToken, async (req, res) => {
     if (!task) return res.status(404).json({ success: false, message: 'Task not found.' });
     if (!task.isActive) return res.status(400).json({ success: false, message: 'Task is no longer active.' });
 
-    // Check if already completed (APPROVED)
-    const existing = await prisma.taskCompletion.findFirst({
-      where: { taskId: id, userId, status: 'APPROVED' }
+    // Check if already completed BEFORE trying to create
+    const existingCompletion = await prisma.taskCompletion.findFirst({
+      where: { userId, taskId: id }
     });
-    if (existing) {
-      return res.status(400).json({ success: false, message: 'You have already completed this task.' });
+
+    if (existingCompletion) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already completed this task.'
+      });
     }
 
-    // Create completion with APPROVED status immediately
-    const completion = await prisma.taskCompletion.create({
-      data: {
-        taskId: id,
-        userId,
-        proof,
-        status: 'APPROVED',
-        verifiedAt: new Date()
+    // Now safely create - no duplicate possible
+    let completion;
+    try {
+      completion = await prisma.taskCompletion.create({
+        data: {
+          taskId: id,
+          userId,
+          proof,
+          status: 'APPROVED',
+          verifiedAt: new Date()
+        }
+      });
+    } catch (createError) {
+      if (createError.code === 'P2002') {
+        return res.status(400).json({
+          success: false,
+          message: 'You have already completed this task.'
+        });
       }
-    });
+      throw createError;
+    }
 
     // Credit wallet immediately
     await prisma.wallet.update({

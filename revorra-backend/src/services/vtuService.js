@@ -70,15 +70,30 @@ export const getDataPlans = async (network) => {
 };
 
 export const purchaseAirtime = async (network, phoneNumber, amountNGN) => {
-  const numericAmount = parseFloat(amountNGN);
-  
-  if (!numericAmount || isNaN(numericAmount)) {
-    throw new Error('Invalid airtime amount');
+  const token = await getToken();
+
+  // Force convert to number no matter what is passed
+  let numericAmount;
+  if (typeof amountNGN === 'object' && amountNGN !== null) {
+    // If somehow an object was passed, try to extract a number from it
+    numericAmount = parseFloat(amountNGN.amount || amountNGN.value || amountNGN.ngn || JSON.stringify(amountNGN));
+  } else {
+    numericAmount = parseFloat(amountNGN);
   }
-  
-  const headers = await getHeaders();
+
+  if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) {
+    throw new Error(`Invalid airtime amount received: ${JSON.stringify(amountNGN)}`);
+  }
+
+  const AIRTIME_SERVICE_IDS = {
+    MTN: 100,
+    AIRTEL: 101,
+    GLO: 102,
+    '9MOBILE': 103
+  };
+
   const serviceID = AIRTIME_SERVICE_IDS[network.toUpperCase()];
-  if (!serviceID) throw new Error('Invalid network');
+  if (!serviceID) throw new Error(`Invalid network: ${network}`);
 
   const clientReference = `REV-AIR-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
@@ -88,7 +103,12 @@ export const purchaseAirtime = async (network, phoneNumber, amountNGN) => {
     mobileNumber: phoneNumber,
     clientReference,
     bypassMobileValidator: false
-  }, { headers });
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization-Token': token
+    }
+  });
 
   return { clientReference, response: response.data };
 };
