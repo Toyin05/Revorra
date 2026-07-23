@@ -17,15 +17,14 @@ const getTopupWizardToken = async () => {
   }
 };
 
-const getRate = async () => {
+export const getRate = async () => {
   try {
     const setting = await prisma.platformSetting.findUnique({
       where: { key: 'EUR_TO_NGN_RATE' }
     });
-    return parseFloat(setting?.value || process.env.EUR_TO_NGN_RATE || '1600');
-  } catch {
-    return parseFloat(process.env.EUR_TO_NGN_RATE || '1600');
-  }
+    if (setting?.value) return parseFloat(setting.value);
+  } catch {}
+  return parseFloat(process.env.EUR_TO_NGN_RATE || '1600');
 };
 
 export const eurToNgn = async (euros) => {
@@ -146,6 +145,7 @@ export const validateMobile = async (mobileNumber) => {
 export default {
   eurToNgn,
   ngnToEur,
+  getRate,
   checkTWBalance,
   getDataPlans,
   purchaseAirtime,

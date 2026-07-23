@@ -350,7 +350,10 @@ export const login = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    // Don't log invalid password attempts - they are normal user behaviour
+    if (error.message !== 'Invalid email or password') {
+      console.error('Login error:', error);
+    }
     return res.status(401).json({
       success: false,
       message: error.message || 'Login failed.',

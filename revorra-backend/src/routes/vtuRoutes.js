@@ -3,6 +3,7 @@ import { authenticateToken } from '../middlewares/authMiddleware.js';
 import { 
   eurToNgn, 
   ngnToEur,
+  getRate,
   checkTWBalance, 
   getDataPlans, 
   purchaseAirtime, 
