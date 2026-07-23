@@ -66,16 +66,16 @@ app.use(cors(corsOptions));
 
 // Rate limiting - General
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  windowMs: 15 * 60 * 1000,
+  max: 200,
   message: { success: false, message: 'Too many requests. Please try again later.' }
 });
 
 // Rate limiting - Auth routes (stricter)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { success: false, message: 'Too many login attempts. Please try again later.' }
+  max: 100, // was 50, increased to handle legitimate high traffic
+  message: { success: false, message: 'Too many login attempts. Please wait 15 minutes and try again.' }
 });
 
 // Rate limiting - VTU routes (prevent abuse)
