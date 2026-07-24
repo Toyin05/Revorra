@@ -17,6 +17,8 @@ const getTopupWizardToken = async () => {
   }
 };
 
+export const getToken = getTopupWizardToken;
+
 export const getRate = async () => {
   try {
     const setting = await prisma.platformSetting.findUnique({
