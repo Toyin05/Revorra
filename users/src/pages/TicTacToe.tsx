@@ -129,8 +129,7 @@ export default function TicTacToePage() {
           }
         }
       } catch (error) {
-        // Fallback: random reward between 0.2 and 0.5 if API fails
-        const reward = 0.2 + Math.random() * 0.3;
+        const reward = 1;
         setRemainingPlays(prev => Math.max(0, prev - 1));
         updateWallet({ onehubBalance: (wallet?.onehubBalance || 0) + reward });
         setBoard(nb); 

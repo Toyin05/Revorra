@@ -8,12 +8,13 @@ import { Link } from "react-router-dom";
 // Exact segment order - must match backend
 const SEGMENTS = [
   { label: "€0", value: 0 },
-  { label: "€0.20", value: 0.20 },
-  { label: "€0.25", value: 0.25 },
-  { label: "€0.30", value: 0.30 },
-  { label: "€0.35", value: 0.35 },
-  { label: "€0.40", value: 0.40 },
-  { label: "€0.50", value: 0.50 },
+  { label: "€1", value: 1 },
+  { label: "€1.5", value: 1.5 },
+  { label: "€2.5", value: 2.5 },
+  { label: "€3", value: 3 },
+  { label: "€4.5", value: 4.5 },
+  { label: "€6", value: 6 },
+  { label: "€7", value: 7 },
 ];
 
 const SEGMENT_DEGREES = 360 / SEGMENTS.length; // 51.43...
@@ -223,12 +224,13 @@ export default function SpinWinPage() {
             // Unique colors for each segment
             const colors = [
               "hsl(50, 95%, 50%)",  // Yellow - €0
-              "hsl(25, 95%, 55%)",  // Orange - €0.20
-              "hsl(45, 90%, 55%)",  // Amber - €0.25
-              "hsl(25, 95%, 55%)",  // Orange - €0.30
-              "hsl(45, 90%, 55%)",  // Amber - €0.35
-              "hsl(25, 95%, 55%)",  // Orange - €0.40
-              "hsl(0, 80%, 50%)"    // Red - €0.50
+              "hsl(25, 95%, 55%)",  // Orange - €1
+              "hsl(45, 90%, 55%)",  // Amber - €1.5
+              "hsl(25, 95%, 55%)",  // Orange - €2.5
+              "hsl(45, 90%, 55%)",  // Amber - €3
+              "hsl(25, 95%, 55%)",  // Orange - €4.5
+              "hsl(0, 80%, 50%)",   // Red - €6
+              "hsl(280, 70%, 50%)"  // Purple - €7
             ];
             return (
               <div

@@ -29,40 +29,13 @@ async function getTodayPlayCount(userId, gameType) {
   return count;
 }
 
-// Weighted reward pool for Spin the Wheel - Better odds!
-const SPIN_REWARDS = [
-  { value: 0, weight: 25 },    // 25% - reduced from 40%
-  { value: 0.20, weight: 35 },  // 35% - increased
-  { value: 0.25, weight: 20 },  // 20% - increased
-  { value: 0.30, weight: 10 },   // 10%
-  { value: 0.35, weight: 5 },   // 5%
-  { value: 0.40, weight: 3 },   // 3% - rare
-  { value: 0.50, weight: 2 }   // 2% - very rare
-];
+const SPIN_REWARDS = [0, 1, 1.5, 2.5, 3, 4.5, 6, 7];
 
-// Function to get weighted random reward
 function getSpinReward() {
-  const totalWeight = SPIN_REWARDS.reduce((sum, r) => sum + r.weight, 0);
-  const random = Math.random() * totalWeight;
-
-  let cumulative = 0;
-  for (const reward of SPIN_REWARDS) {
-    cumulative += reward.weight;
-    if (random <= cumulative) {
-      return reward.value;
-    }
-  }
-  return 0;
+  return SPIN_REWARDS[Math.floor(Math.random() * SPIN_REWARDS.length)];
 }
 
-// TicTacToe reward function - €0.20 to €0.50 for wins
-const getTicTacToeReward = () => {
-  const rand = Math.random();
-  if (rand < 0.50) return 0.20; // 50% chance
-  if (rand < 0.80) return 0.30; // 30% chance
-  if (rand < 0.95) return 0.40; // 15% chance
-  return 0.50;                   // 5% chance
-};
+const getTicTacToeReward = () => 1;
 
 // Generate unique session ID
 function generateSessionId() {
@@ -346,10 +319,9 @@ router.post('/tictactoe/result', authenticateToken, async (req, res) => {
       });
     }
 
-    // Reward only on win - €0.3 for win
     let reward = 0;
     if (result === 'win') {
-      reward = 0.3;
+      reward = 1;
     }
 
     // Generate session ID for duplicate prevention

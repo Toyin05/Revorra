@@ -18,6 +18,8 @@ export default function AdminCouponsPage() {
   const [newLink, setNewLink] = useState("");
   const [platform, setPlatform] = useState("whatsapp");
   const [email, setEmail] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -117,6 +119,12 @@ export default function AdminCouponsPage() {
       hour12: true
     });
   };
+
+  const totalPages = Math.ceil(coupons.length / ITEMS_PER_PAGE);
+  const paginatedCoupons = coupons.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   if (loading) {
     return (
@@ -245,7 +253,7 @@ export default function AdminCouponsPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {coupons.map((c: any) => (
+                 {paginatedCoupons.map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -292,6 +300,31 @@ export default function AdminCouponsPage() {
                 ))}
               </TableBody>
             </Table>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', 
+                alignItems: 'center', gap: '12px', padding: '16px' }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                  Page {currentPage} of {totalPages} 
+                  ({coupons.length} total)
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

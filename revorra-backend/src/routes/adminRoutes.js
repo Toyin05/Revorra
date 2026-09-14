@@ -424,15 +424,6 @@ router.get('/coupons', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.delete('/coupons/clear-all', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const result = await prisma.coupon.deleteMany({});
-    return res.status(200).json({ success: true, message: `Cleared ${result.count} coupons`, data: { deleted: result.count } });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
