@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -15,7 +16,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-muted/30 flex flex-col">
       <header className="border-b bg-background">
         <div className="container flex items-center h-14">
-          <Link to="/" className="text-xl font-display font-bold text-gradient">Revorra</Link>
+          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[22px]" /></Link>
         </div>
       </header>
       <div className="flex-1 flex items-center justify-center p-4">

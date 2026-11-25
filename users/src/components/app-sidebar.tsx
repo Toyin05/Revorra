@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import {
   LayoutDashboard, ListTodo, Share2, Gamepad2, Users, Clock,
   Wallet, Phone, UserCircle, Settings, LogOut
@@ -31,7 +32,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 md:min-h-screen border-r bg-card">
       <div className="p-5 border-b">
-        <h1 className="text-xl font-display font-bold text-gradient">Revorra</h1>
+        <NavLink to="/dashboard" aria-label="Revorra" className="text-foreground inline-block"><Logo className="h-[22px]" /></NavLink>
         {user && (
           <p className="text-xs text-muted-foreground mt-1 truncate">@{user.username}</p>
         )}
