@@ -95,7 +95,7 @@ export default function DashboardPage() {
           {/* Referral link */}
           <div style={{ animationDelay: "120ms" }} className={`rise ${card} p-2 flex items-center gap-2`}>
             <input readOnly value={referralLink} className="flex-1 min-w-0 h-11 text-[13px] bg-transparent px-3 text-muted-foreground outline-none" />
-            <button onClick={handleCopyLink} className="h-11 px-4 rounded-2xl bg-foreground text-white text-sm font-medium flex items-center gap-1.5 cursor-pointer hover:bg-foreground/90 active:scale-[0.98] transition">
+            <button onClick={handleCopyLink} className="h-11 px-4 rounded-full bg-foreground text-white text-sm font-medium flex items-center gap-1.5 cursor-pointer hover:bg-foreground/90 active:scale-[0.98] transition">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {copied ? "Copied!" : "Copy"}
             </button>

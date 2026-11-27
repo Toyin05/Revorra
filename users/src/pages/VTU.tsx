@@ -289,7 +289,7 @@ export default function VTUPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize cursor-pointer transition ${
+              className={`flex-1 py-2.5 rounded-full text-sm font-semibold capitalize cursor-pointer transition ${
                 tab === t ? "gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -366,7 +366,7 @@ export default function VTUPage() {
                   <button
                     key={naira}
                     onClick={() => handleSelectAmount(naira)}
-                    className={`py-2 rounded-lg text-sm font-medium transition cursor-pointer ${
+                    className={`py-2 rounded-full text-sm font-medium transition cursor-pointer ${
                       amount === naira.toString()
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted hover:bg-muted/80"
@@ -424,7 +424,7 @@ export default function VTUPage() {
           <button 
             onClick={handleBuy} 
             disabled={loading}
-            className="w-full gradient-primary text-primary-foreground py-3 rounded-xl font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full gradient-primary text-primary-foreground py-3 rounded-full font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Buy {tab === "airtime" ? "Airtime" : "Data"}

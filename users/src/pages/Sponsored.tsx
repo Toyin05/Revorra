@@ -157,7 +157,7 @@ export default function SponsoredPage() {
                   <div className="flex gap-2 mt-3">
                     <button 
                       onClick={() => handleShare(task)} 
-                      className="flex-1 border rounded-xl py-2 text-center text-xs font-medium cursor-pointer hover:bg-muted transition flex items-center justify-center gap-1"
+                      className="flex-1 border rounded-full py-2 text-center text-xs font-medium cursor-pointer hover:bg-muted transition flex items-center justify-center gap-1"
                     >
                       <Share2 className="h-3 w-3" />
                       Share on WhatsApp

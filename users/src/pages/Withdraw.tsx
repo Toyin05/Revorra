@@ -307,7 +307,7 @@ export default function WithdrawPage() {
         <button
           type="submit"
           disabled={loading || !couponCode.trim() || !amount || !bankName.trim() || !accountNumber.trim() || !accountName.trim()}
-          className="w-full gradient-primary text-primary-foreground py-4 rounded-xl font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full gradient-primary text-primary-foreground py-4 rounded-full font-semibold cursor-pointer hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
           style={{
             opacity: (loading || !couponCode.trim() || !amount || !bankName.trim() || !accountNumber.trim() || !accountName.trim()) ? 0.5 : 1,
             cursor: (loading || !couponCode.trim()) ? 'not-allowed' : 'pointer',
@@ -329,7 +329,7 @@ export default function WithdrawPage() {
         <button
           type="button"
           onClick={handleGetCoupon}
-          className="w-full mt-4 border border-primary/30 bg-primary/5 rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm text-primary font-medium hover:bg-primary/10 hover:border-primary/50 transition cursor-pointer"
+          className="w-full mt-4 border border-primary/30 bg-primary/5 rounded-full py-3 px-4 flex items-center justify-center gap-2 text-sm text-primary font-medium hover:bg-primary/10 hover:border-primary/50 transition cursor-pointer"
         >
           <Lock className="h-4 w-4" />
           Don't have a coupon code? Request one now

@@ -46,7 +46,7 @@ export function NotificationPopup() {
             </p>
             <button
               onClick={() => { dismiss(); navigate("/tasks"); }}
-              className="w-full mt-5 gradient-primary text-primary-foreground py-2.5 rounded-xl font-semibold text-sm cursor-pointer hover:opacity-90 transition-opacity"
+              className="w-full mt-5 gradient-primary text-primary-foreground py-2.5 rounded-full font-semibold text-sm cursor-pointer hover:opacity-90 transition-opacity"
             >
               View Today's Tasks
             </button>

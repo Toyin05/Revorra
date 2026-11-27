@@ -150,7 +150,7 @@ export default function SpinWinPage() {
         </Link>
         <h1 className="text-xl font-display font-bold mb-1">Spin & Win</h1>
         <p className="text-sm text-muted-foreground mb-6">Please log in to play</p>
-        <Link to="/login" className="mt-3 gradient-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition">
+        <Link to="/login" className="mt-3 gradient-primary text-primary-foreground px-6 py-2 rounded-full text-sm font-semibold cursor-pointer hover:opacity-90 transition">
           Log In
         </Link>
       </div>
@@ -286,7 +286,7 @@ export default function SpinWinPage() {
       <button
         onClick={handleSpin}
         disabled={spinning || !canPlay}
-        className={`w-full py-4 rounded-xl font-semibold text-sm transition cursor-pointer
+        className={`w-full py-4 rounded-full font-semibold text-sm transition cursor-pointer
           ${spinning || !canPlay 
             ? "bg-muted text-muted-foreground cursor-not-allowed" 
             : "gradient-primary text-primary-foreground hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] shadow-lg"}`}

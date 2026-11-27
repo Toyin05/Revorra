@@ -94,7 +94,7 @@ export function AnnouncementPopup() {
             <Link
               to={announcement.ctaLink}
               onClick={handleCtaClick}
-              className="block w-full gradient-primary text-primary-foreground text-center py-3 rounded-xl font-semibold hover:opacity-90 transition"
+              className="block w-full gradient-primary text-primary-foreground text-center py-3 rounded-full font-semibold hover:opacity-90 transition"
             >
               Learn More
             </Link>

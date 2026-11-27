@@ -89,7 +89,7 @@ export default function ReferralsPage() {
           <div className="flex-1 bg-muted rounded-xl px-4 py-2.5 text-sm text-muted-foreground truncate">
             {link}
           </div>
-          <button onClick={copy} className="gradient-primary text-primary-foreground px-4 rounded-xl flex items-center gap-1 text-sm font-medium cursor-pointer hover:opacity-90 transition shrink-0">
+          <button onClick={copy} className="gradient-primary text-primary-foreground px-4 rounded-full flex items-center gap-1 text-sm font-medium cursor-pointer hover:opacity-90 transition shrink-0">
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {copied ? "Copied" : "Copy"}
           </button>

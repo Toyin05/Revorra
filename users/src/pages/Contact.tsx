@@ -21,7 +21,7 @@ export default function ContactPage() {
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container flex items-center justify-between h-14">
           <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[14px]" /></Link>
-          <Link to="/login" className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-xl cursor-pointer">Login</Link>
+          <Link to="/login" className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-full cursor-pointer">Login</Link>
         </div>
       </header>
       <div className="container py-12 max-w-md">
@@ -39,7 +39,7 @@ export default function ContactPage() {
             <label className="text-sm font-medium mb-1 block">Message</label>
             <textarea rows={4} value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition resize-none" />
           </div>
-          <button type="submit" className="w-full gradient-primary text-primary-foreground py-3 rounded-xl font-semibold cursor-pointer hover:opacity-90 transition">
+          <button type="submit" className="w-full gradient-primary text-primary-foreground py-3 rounded-full font-semibold cursor-pointer hover:opacity-90 transition">
             Send Message
           </button>
         </form>

@@ -37,7 +37,7 @@ export default function AccountSetupPage() {
             <button
               key={m}
               onClick={() => setMethod(m)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize cursor-pointer transition ${
+              className={`flex-1 py-2.5 rounded-full text-sm font-semibold capitalize cursor-pointer transition ${
                 method === m ? "gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}
             >
@@ -75,7 +75,7 @@ export default function AccountSetupPage() {
               <input value={form.crypto_wallet} onChange={e => update("crypto_wallet", e.target.value)} placeholder="Enter your crypto wallet address" className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" />
             </div>
           )}
-          <button onClick={handleSave} className="w-full gradient-primary text-primary-foreground py-3 rounded-xl font-semibold cursor-pointer hover:opacity-90 transition">
+          <button onClick={handleSave} className="w-full gradient-primary text-primary-foreground py-3 rounded-full font-semibold cursor-pointer hover:opacity-90 transition">
             Save Details
           </button>
         </div>

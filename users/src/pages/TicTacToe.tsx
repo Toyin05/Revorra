@@ -194,7 +194,7 @@ export default function TicTacToePage() {
         </Link>
         <h1 className="text-xl font-display font-bold mb-1">Tic Tac Toe</h1>
         <p className="text-sm text-muted-foreground mb-6">Please log in to play</p>
-        <Link to="/login" className="mt-3 gradient-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition">
+        <Link to="/login" className="mt-3 gradient-primary text-primary-foreground px-6 py-2 rounded-full text-sm font-semibold cursor-pointer hover:opacity-90 transition">
           Log In
         </Link>
       </div>
@@ -282,7 +282,7 @@ export default function TicTacToePage() {
         <div className="text-center mt-6">
           <p className="font-display font-bold text-lg">{result}</p>
           {canPlay && remainingPlays > 0 && (
-            <button onClick={reset} className="mt-3 gradient-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 transition">
+            <button onClick={reset} className="mt-3 gradient-primary text-primary-foreground px-6 py-2 rounded-full text-sm font-semibold cursor-pointer hover:opacity-90 transition">
               Play Again
             </button>
           )}
