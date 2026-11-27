@@ -154,7 +154,6 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="relative -mt-[68px] pt-[68px]">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[640px] bg-[radial-gradient(60%_55%_at_50%_0%,hsl(28_100%_88%/.85),transparent_70%)]" />
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[640px] opacity-[0.5] [background-image:linear-gradient(hsl(0_0%_0%/.04)_1px,transparent_1px),linear-gradient(90deg,hsl(0_0%_0%/.04)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]" />
         <div className="container relative pt-20 pb-12 md:pt-28 md:pb-16">
           <motion.div initial="h" animate="s" variants={{ s: { transition: { staggerChildren: 0.08 } } }} className="text-center max-w-4xl mx-auto">
@@ -165,7 +164,6 @@ export default function HomePage() {
             <motion.h1 variants={{ h: { opacity: 0, y: 24 }, s: { opacity: 1, y: 0, transition: { duration: 0.8, ease } } }} className="mt-7 text-[44px] leading-[1.02] md:text-7xl md:leading-[0.98] font-display font-semibold tracking-[-0.01em] text-balance">
               Upgrade your lifestyle by{" "}
               <span className="relative inline-block">
-                <motion.span aria-hidden initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.55, duration: 0.8, ease }} className="absolute left-[-0.06em] right-[-0.06em] bottom-[0.06em] h-[0.34em] origin-left rounded-sm bg-[hsl(28_100%_84%)]" />
                 <span className="relative text-gradient">earning on the go</span>
               </span>
             </motion.h1>
