@@ -17,7 +17,7 @@ export default function HomePage() {
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container flex items-center justify-between h-14">
-          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[22px]" /></Link>
+          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[14px]" /></Link>
           <div className="flex gap-2">
             <Link to="/login" className="px-4 py-2 text-sm font-medium text-foreground hover:text-primary transition cursor-pointer">Login</Link>
             <Link to="/register" className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-xl cursor-pointer hover:opacity-90 transition">Get Started</Link>
@@ -109,7 +109,7 @@ export default function HomePage() {
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
-              <div className="mb-3 text-foreground"><Logo className="h-[22px]" /></div>
+              <div className="mb-3 text-foreground"><Logo className="h-[14px]" /></div>
               <p className="text-xs text-muted-foreground">Upgrade your lifestyle by earning on the go.</p>
             </div>
             <div>

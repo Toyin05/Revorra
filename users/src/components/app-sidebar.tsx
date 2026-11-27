@@ -32,7 +32,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 md:min-h-screen border-r bg-card">
       <div className="p-5 border-b">
-        <NavLink to="/dashboard" aria-label="Revorra" className="text-foreground inline-block"><Logo className="h-[22px]" /></NavLink>
+        <NavLink to="/dashboard" aria-label="Revorra" className="text-foreground inline-block"><Logo className="h-[14px]" /></NavLink>
         {user && (
           <p className="text-xs text-muted-foreground mt-1 truncate">@{user.username}</p>
         )}

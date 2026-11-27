@@ -28,7 +28,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-muted/30 flex flex-col">
       <header className="border-b bg-background">
         <div className="container flex items-center h-14">
-          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[22px]" /></Link>
+          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[14px]" /></Link>
         </div>
       </header>
       <div className="flex-1 flex items-center justify-center p-4">

@@ -12,7 +12,7 @@ export default function BlogPage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container flex items-center justify-between h-14">
-          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[22px]" /></Link>
+          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[14px]" /></Link>
           <Link to="/login" className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-xl cursor-pointer">Login</Link>
         </div>
       </header>
