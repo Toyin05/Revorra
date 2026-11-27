@@ -1,3 +1,4 @@
+import AuthShell from "@/components/AuthShell";
 import Logo from "@/components/Logo";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -13,30 +14,21 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      <header className="border-b bg-background">
-        <div className="container flex items-center h-14">
-          <Link to="/" aria-label="Revorra home" className="text-foreground"><Logo className="h-[14px]" /></Link>
-        </div>
-      </header>
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-card rounded-2xl shadow-elevated p-6 md:p-8 border">
-          <h1 className="text-2xl font-display font-bold mb-1">Reset Password</h1>
-          <p className="text-sm text-muted-foreground mb-6">Enter your email to receive reset instructions</p>
+    <AuthShell>
+          <h1 className="text-3xl md:text-4xl font-display font-semibold tracking-tight mb-2">Reset Password</h1>
+          <p className="text-[15px] text-muted-foreground mb-8">Enter your email to receive reset instructions</p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-medium mb-1 block text-muted-foreground">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border rounded-xl px-4 py-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" />
+              <label className="text-[13px] font-medium mb-1.5 block text-foreground/80">Email</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full h-12 border border-black/10 rounded-xl px-4 text-[15px] bg-white placeholder:text-muted-foreground/60 hover:border-black/20 focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition" />
             </div>
-            <button type="submit" className="w-full gradient-primary text-primary-foreground py-3 rounded-xl font-semibold cursor-pointer hover:opacity-90 transition">
+            <button type="submit" className="w-full h-12 gradient-primary text-white rounded-full font-medium cursor-pointer shadow-[0_8px_24px_-8px_rgba(234,88,12,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(234,88,12,0.7)] active:scale-[0.99] transition">
               Send Reset Link
             </button>
           </form>
-          <p className="text-center text-sm text-muted-foreground mt-5">
+          <p className="text-center text-sm text-muted-foreground mt-8">
             <Link to="/login" className="text-primary font-medium cursor-pointer">Back to Login</Link>
           </p>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

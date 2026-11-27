@@ -19,9 +19,9 @@ export function DashboardLayout() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex min-h-screen w-full bg-muted/30">
+    <div className="flex min-h-screen w-full bg-[#F7F7F6]">
       <AppSidebar />
-      <main className="flex-1 pb-20 md:pb-0">
+      <main className="flex-1 min-w-0 pb-28 md:pb-0">
         <Outlet />
       </main>
       <BottomNav />

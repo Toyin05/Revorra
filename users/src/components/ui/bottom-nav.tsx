@@ -13,16 +13,16 @@ const navItems = [
 
 export function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-elevated md:hidden">
-      <div className="flex items-center justify-around py-1.5">
+    <nav className="fixed bottom-3 left-3 right-3 z-50 md:hidden rounded-[22px] bg-white/85 backdrop-blur-xl border border-black/[0.06] shadow-[0_12px_32px_-12px_rgba(0,0,0,0.25)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex items-center justify-around p-1.5">
         {navItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-[10px] font-medium transition-colors cursor-pointer rounded-lg",
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors cursor-pointer rounded-2xl",
+                isActive ? "text-primary bg-orange-50" : "text-muted-foreground hover:text-foreground"
               )
             }
           >

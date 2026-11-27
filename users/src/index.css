@@ -88,3 +88,7 @@
     box-shadow: var(--shadow-elevated);
   }
 }
+
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .5s cubic-bezier(.22,1,.36,1) both; }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
