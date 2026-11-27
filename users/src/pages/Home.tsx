@@ -67,17 +67,25 @@ function StepVisual({ i }: { i: number }) {
       ))}
     </div>
   );
-  if (i === 2) return (
-    <div className="relative w-full max-w-[300px] aspect-[4/3]">
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 225" fill="none"><path d="M150 112 L62 52 M150 112 L238 52 M150 112 L62 175 M150 112 L238 175" stroke="hsl(17 90% 48% / .35)" strokeWidth="1.5" strokeDasharray="4 5" /></svg>
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-16 w-16 rounded-2xl gradient-primary shadow-elevated grid place-items-center text-white"><Zap className="h-7 w-7" /></div>
-      {[["18%", "20%"], ["82%", "20%"], ["18%", "80%"], ["82%", "80%"]].map(([l, t], k) => (
-        <motion.div key={k} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.15 + k * 0.08, ease }} className="absolute -translate-x-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white border border-black/[0.06] shadow-card grid place-items-center" style={{ left: l, top: t }}>
-          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-orange-200 to-amber-100" />
-        </motion.div>
-      ))}
-    </div>
-  );
+  if (i === 2) {
+    const pts = [[18, 20], [82, 20], [18, 80], [82, 80]];
+    return (
+      <div className="relative w-full max-w-[300px] md:max-w-[380px] aspect-[4/3]">
+        <svg className="absolute inset-0 w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
+          {pts.map(([x, y], k) => (
+            <line key={k} className="dash-flow" x1="50" y1="50" x2={x} y2={y} stroke="hsl(17 90% 48% / .5)" strokeWidth="1.5" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
+          ))}
+        </svg>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-16 w-16 rounded-2xl gradient-primary shadow-elevated grid place-items-center text-white"><Zap className="h-7 w-7" /></div>
+        {pts.map(([x, y], k) => (
+          <motion.div key={k} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.35 + k * 0.08, duration: 0.4, ease }}
+            className="absolute h-11 w-11 -ml-[22px] -mt-[22px] rounded-full bg-white border border-black/[0.06] shadow-card grid place-items-center text-[11px] font-semibold text-foreground" style={{ left: `${x}%`, top: `${y}%` }}>
+            {TOP_EARNERS[k + 1].avatar}
+          </motion.div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="w-full max-w-[300px] rounded-2xl gradient-primary p-5 text-white shadow-[0_24px_48px_-16px_rgba(234,88,12,0.55)]">
       <div className="flex justify-between items-start"><Trophy className="h-6 w-6" /><div className="h-6 w-10 rounded-md bg-white/25" /></div>

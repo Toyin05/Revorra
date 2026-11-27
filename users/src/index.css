@@ -92,3 +92,6 @@
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .rise { animation: rise .5s cubic-bezier(.22,1,.36,1) both; }
 @media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
+@keyframes dash-flow { to { stroke-dashoffset: -18; } }
+.dash-flow { animation: dash-flow 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .dash-flow { animation: none; } }
